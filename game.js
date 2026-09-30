@@ -205,10 +205,6 @@
     $('roomBackdrop').style.backgroundImage="url('./assets/"+(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+".webp')";
     $('roomBackdrop').style.filter='saturate('+(1+state.officeLevel*.014)+') brightness('+(1+state.officeLevel*.006)+')';
     $('companyNameBrand').textContent=state.companyName||'ATELIER';
-    $('capacityText').textContent='직원 '+state.hired.length+'/'+employeeCap[state.officeLevel-1]+' · 가구 '+state.ownedFurniture.length+'/'+furnitureCap[state.officeLevel-1];
-    $('progressText').textContent=state.releases+'회 컬렉션 출시 · 연구 '+state.research+'P';
-    $('upgradeCost').textContent=state.officeLevel===10?'최고 레벨':'₩'+upgradePrice(state.officeLevel)+'M · 출시 '+state.officeLevel+'회 필요';
-    $('upgradeButton').disabled=state.officeLevel===10;
     $('scene').classList.toggle('editing',editMode);
     $('inventory').hidden=!editMode;
     $('editButton').classList.toggle('active',editMode);
@@ -219,7 +215,6 @@
     $('launchButton').querySelector('small').textContent=editMode?'배치 저장':'새 컬렉션';
     $('guestBanner').innerHTML=state.localSave?'이 기기 저장 사용 중 · 다른 기기와 동기화되지 않습니다. <button type="button" id="saveInfo">저장 방식 보기</button>':'게스트 플레이 중 · 화면을 나가면 진행 내용이 사라집니다. <button type="button" id="saveInfo">저장 방식 보기</button>';
     $('saveInfo').addEventListener('click',showSaveInfo);
-    $('saveButton').textContent=state.localSave?'이 기기에 저장 중':'저장 안내';
     renderFloor();if(editMode)renderInventory();
   };
   const closeModal = () => {$('modalLayer').hidden=true;$('modalContent').replaceChildren();};
@@ -385,7 +380,7 @@
   };
   const menu = $('gameMenu'),toggle = $('menuToggle');
   const setMenu = open => {menu.hidden=!open;toggle.setAttribute('aria-expanded',String(open));};
-  toggle.onclick=()=>setMenu(true);
+  toggle.onclick=()=>setMenu(menu.hidden);
   toggle.addEventListener('mouseenter',()=>setMenu(true));
   menu.addEventListener('mouseleave',()=>setMenu(false));
   document.addEventListener('click',event=>{if(!menu.contains(event.target)&&event.target!==toggle)setMenu(false);});
@@ -422,6 +417,11 @@
       save();render();closeModal();toast(offices[next-1]+' 확장 완료!');
     };
   };
+  const showOfficeInfo = () => {
+    const level=state.officeLevel,top=level===10;
+    showModal('<span class="modal-kicker">MY ATELIER · YEAR '+(1+Math.floor(state.releases/4))+'</span><h2 id="modalTitle">'+offices[level-1]+'</h2><p>오피스 LV. '+level+' / 10</p><div class="office-detail-grid"><div><span>직원 수용</span><strong>'+state.hired.length+' / '+employeeCap[level-1]+'명</strong></div><div><span>가구 배치</span><strong>'+state.ownedFurniture.length+' / '+furnitureCap[level-1]+'개</strong></div><div><span>컬렉션 출시</span><strong>'+state.releases+'회</strong></div><div><span>연구 포인트</span><strong>'+state.research+'P</strong></div></div><p class="office-upgrade-note">'+(top?'최고 레벨의 오피스입니다.':'다음 확장: ₩'+upgradePrice(level)+'M · 컬렉션 '+level+'회 출시 필요 · 확장 후 제작비 ₩38M 유지')+'</p>'+(top?'':'<button class="modal-primary" id="upgradeButton" type="button">오피스 확장하기</button>'));
+    if(!top)$('upgradeButton').onclick=showUpgrade;
+  };
   const cancelLayout=()=>{
     if(!editMode)return;
     state.placed=layoutSnapshot.map(p=>({...p}));
@@ -440,10 +440,9 @@
     setHint('가구나 직원을 끌어 옮긴 뒤 오른쪽 아래에서 배치를 저장하세요.');
   };
   $('doneButton').onclick=cancelLayout;
-  $('upgradeButton').onclick=showUpgrade;
+  $('officeInfoButton').onclick=showOfficeInfo;
   $('researchButton').onclick=()=>{setMenu(false);showResearch();};
   $('launchButton').onclick=()=>editMode?saveLayout():showLaunch();
-  $('saveButton').onclick=showSaveInfo;
   $('modalClose').onclick=closeModal;
   $('modalLayer').addEventListener('click',event=>{if(event.target===$('modalLayer'))closeModal();});
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('modalLayer').hidden)closeModal();});
