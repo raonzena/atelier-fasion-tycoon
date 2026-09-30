@@ -11,7 +11,7 @@
 <body>
 <div class="game-shell">
   <header class="hud">
-    <div class="brand"><span class="brand-mark">A</span><div><strong>ATELIER</strong><small>FASHION COMPANY TYCOON</small></div></div>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="게임 메뉴 열기" aria-expanded="false">☰</button><div class="brand"><span class="brand-mark">A</span><div><strong id="companyNameBrand">ATELIER</strong><small>FASHION COMPANY TYCOON</small></div></div>
     <div class="hud-stats" aria-label="회사 현황">
       <div class="hud-stat"><span>회사 레벨</span><strong id="companyLevel">1</strong></div>
       <div class="hud-stat"><span>자산</span><strong id="assetValue">₩120M</strong></div>
@@ -19,31 +19,47 @@
     </div>
     <button class="save-button" id="saveButton" type="button">저장 안내</button>
   </header>
+  <nav class="game-menu" id="gameMenu" aria-label="게임 메뉴" hidden>
+    <button id="menuHire" type="button">직원 고용</button>
+    <button id="menuFurniture" type="button">가구 구매</button>
+    <button id="editButton" type="button">배치 수정</button>
+    <button id="researchButton" type="button">팀·연구</button>
+    <button id="menuSave" type="button">저장 안내</button>
+  </nav>
   <div class="guest-banner" id="guestBanner">게스트 플레이 중 · 화면을 나가면 진행 내용이 사라집니다. <button type="button" id="saveInfo">저장 방식 보기</button></div>
   <main class="play-area">
-    <div class="scene" id="scene" aria-label="배치 가능한 회사 사무실">
-      <div class="room-backdrop" id="roomBackdrop"></div>
-      <div class="room-vignette"></div>
-      <div class="scene-label"><span class="eyebrow">MY ATELIER · YEAR <span id="year">1</span></span><strong id="officeTitle">낡은 원룸 사무실</strong><span id="officeLevel">오피스 LV. 1 / 10</span></div>
-      <div class="season-card"><span>이번 시즌</span><strong id="season">봄</strong><small id="trend">트렌드 · 미니멀 셔츠</small></div>
-      <div class="floor" id="floor" role="grid" aria-label="사무실 배치 칸"></div>
-      <div class="placement-hint" id="placementHint" aria-live="polite">가구와 직원을 터치해 살펴보세요</div>
-    </div>
-    <div class="bottom-dock">
-      <div class="dock-summary"><span class="eyebrow">OFFICE PROGRESS</span><strong id="progressTitle">작은 시작, 첫 번째 컬렉션</strong><span id="progressText">컬렉션을 출시해 다음 오피스를 열어보세요.</span></div>
-      <div class="dock-actions">
-        <button class="dock-button edit-button" id="editButton" type="button"><span class="button-icon">▦</span><span>배치 수정</span></button>
-        <button class="dock-button upgrade-button" id="upgradeButton" type="button"><span class="button-icon">⌂</span><span id="upgradeLabel">오피스 확장</span><small id="upgradeCost">₩95M · 출시 1회 필요</small></button>
-        <button class="dock-button" id="researchButton" type="button"><span class="button-icon">✎</span><span>팀·연구</span></button>
-        <button class="dock-button primary-button" id="launchButton" type="button"><span class="button-icon">✦</span><span>새 컬렉션</span></button>
+    <div class="play-stage">
+      <div class="scene" id="scene" aria-label="배치 가능한 회사 사무실">
+        <div class="room-world" id="roomWorld">
+          <div class="room-backdrop" id="roomBackdrop"></div>
+          <div class="room-vignette"></div>
+          <div class="floor" id="floor" role="grid" aria-label="사무실 바닥 배치 칸"></div>
+        </div>
+        <div class="placement-hint" id="placementHint" aria-live="polite">직원을 고용하고 가구를 구매해 보세요</div>
       </div>
+      <aside class="office-panel" aria-label="사무실과 시즌 정보">
+        <span class="eyebrow">MY ATELIER · YEAR <span id="year">1</span></span>
+        <strong id="officeTitle">낡은 원룸 사무실</strong>
+        <div class="office-level-row"><span id="officeLevel">오피스 LV. 1 / 10</span><button id="upgradeButton" type="button">확장</button></div>
+        <small id="upgradeCost">₩95M · 출시 1회 필요</small>
+        <div class="panel-divider"></div>
+        <span class="eyebrow">이번 시즌</span>
+        <strong id="season">봄</strong>
+        <span id="trend">트렌드 · 미니멀 셔츠</span>
+        <div class="panel-divider"></div>
+        <span class="eyebrow">사무실 수용 인원</span>
+        <span id="capacityText">직원 0/1 · 가구 0/2</span>
+        <span id="progressText">첫 컬렉션을 시작해 보세요.</span>
+      </aside>
+      <button class="paw-launch" id="launchButton" type="button" aria-label="새 컬렉션 만들기"><span aria-hidden="true">🐾</span><small>새 컬렉션</small></button>
     </div>
   </main>
   <section class="inventory" id="inventory" hidden aria-label="배치할 가구와 직원">
-    <div class="inventory-heading"><div><strong>사무실 배치</strong><span>가구 또는 직원을 선택한 뒤 바닥을 터치하세요. 배치한 물건을 끌어서 옮길 수도 있어요.</span></div><button id="doneButton" type="button">완료</button></div>
+    <div class="inventory-heading"><div><strong>사무실 배치</strong><span>가구 또는 직원을 선택한 뒤 바닥을 터치하세요. 배치한 물건을 끌어서 옮길 수도 있어요.</span></div><button id="doneButton" type="button">취소</button></div>
     <div class="inventory-items" id="inventoryItems"></div>
   </section>
 </div>
+<div class="start-layer" id="startLayer"><form class="start-card" id="startForm"><span class="modal-kicker">ATELIER · NEW COMPANY</span><h1>나만의 의류 회사를 시작해요</h1><label for="companyNameInput">회사 이름</label><input id="companyNameInput" name="companyName" maxlength="20" autocomplete="off" required placeholder="예: 고양이 아틀리에"><p>고객 0명, 빈 사무실에서 시작합니다. 게스트 플레이는 화면을 나가면 초기화돼요.</p><button class="modal-primary" type="submit">회사 설립하기</button></form></div>
 <div class="modal-layer" id="modalLayer" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="modal-close" id="modalClose" aria-label="닫기" type="button">×</button><div id="modalContent"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="./game.js" defer></script>
