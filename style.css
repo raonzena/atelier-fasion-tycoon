@@ -336,3 +336,61 @@ html,body{background:#fff1d4;color:#594850}
  .paw-launch{right:12px;bottom:103px;padding:7px 11px}.paw-launch small{font-size:10px}
 }
 .start-layer{background:#755260c7}.start-card{background:#fffaf0;border-color:#e6b0b2;box-shadow:0 20px 55px #69475470}.start-card input{border-color:#edc4b8;color:#604b53}.start-card p{color:#7c666c}
+
+/* Collection production and release feedback */
+.office-level-row .office-info-button{width:auto;min-width:39px;height:26px;padding:0 7px;border-radius:8px;font-size:11px;font-weight:800}
+.production-stage{text-align:center;padding:12px 0 2px}
+.production-percent{font-size:clamp(42px,8vw,64px);font-weight:800;line-height:1;color:#d76b85;font-variant-numeric:tabular-nums}
+.production-track{height:13px;margin:15px auto 10px;overflow:hidden;border-radius:99px;background:#f8dfd3;box-shadow:inset 0 1px 3px #ad798355}
+.production-track span{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ffc587,#f18ca4);transition:width .11s linear}
+.production-stage p{margin:7px 0 10px;font-size:13px}
+.production-team{display:flex;align-items:flex-end;justify-content:center;gap:4px;min-height:150px;padding:10px 5px 0;border-radius:15px;background:linear-gradient(180deg,#fff8e9,#ffe9dd)}
+.production-worker{display:flex;flex:1 1 0;min-width:0;max-width:115px;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;animation:busy-cat 1.15s ease-in-out infinite;animation-delay:var(--delay)}
+.production-worker img{display:block;width:100%;height:118px;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 4px 2px #b98a7955)}
+.production-worker span{font-size:11px;font-weight:800;color:#775864}
+@keyframes busy-cat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
+.result-hero{position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:132px;overflow:hidden;border-radius:15px;text-align:center;background:#fff1dc;color:#a45c70}
+.result-hero strong{position:relative;z-index:2;font-size:20px}
+.result-success{background:radial-gradient(circle,#fff9db 12%,#ffdfd1 88%)}
+.result-mark{position:relative;z-index:2;font-size:54px;line-height:1;color:#ee8a9c;animation:result-pop .65s cubic-bezier(.2,1.6,.45,1) both}
+@keyframes result-pop{from{transform:scale(.25) rotate(-25deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.celebration{position:absolute;z-index:1;top:45%;left:50%;width:1px;height:1px;pointer-events:none}
+.celebration i{position:absolute;width:9px;height:15px;border-radius:2px;background:hsl(var(--hue) 83% 71%);opacity:0;animation:confetti-pop 1.35s ease-out forwards}
+.celebration i:nth-child(3n){width:7px;height:7px;border-radius:50%}
+@keyframes confetti-pop{0%{transform:translate(0,0) rotate(0);opacity:0}15%{opacity:1}72%{opacity:1}100%{transform:translate(var(--x),var(--y)) rotate(680deg);opacity:0}}
+.result-failure{gap:0;background:#fff0e9}
+.sad-team{display:block;max-width:95%;width:320px;height:146px;object-fit:contain;object-position:center bottom;animation:sad-sigh 2.2s ease-in-out infinite}
+@keyframes sad-sigh{0%,100%{transform:translateY(0)}55%{transform:translateY(4px)}}
+.result-failure strong{font-size:17px;margin-bottom:9px}
+.change-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:16px 0}
+.change-card{display:flex;flex-direction:column;gap:3px;min-width:0;padding:10px 6px;border:1px solid #edcbbd;border-radius:11px;background:#fff5e9;text-align:center}
+.change-card>span{font-size:11px;font-weight:700;color:#876e72}.change-card strong{display:flex;align-items:center;justify-content:center;gap:3px;font-size:15px;white-space:nowrap;color:#79646c}
+.change-card em{display:inline-block;font:900 23px/1 system-ui,sans-serif;font-style:normal;animation:arrow-up 1.05s ease-in-out 3}
+.change-card.down em{animation-name:arrow-down}.change-card.flat em{animation-name:arrow-flat}
+.change-card.up strong{color:#ba637e}.change-card.down strong{color:#7b78aa}.change-card small{font-size:10px;color:#856e73;font-variant-numeric:tabular-nums}
+@keyframes arrow-up{50%{transform:translateY(-6px)}}@keyframes arrow-down{50%{transform:translateY(6px)}}@keyframes arrow-flat{50%{transform:translateX(5px)}}
+@media(max-width:680px){
+ .office-level-row .office-info-button{min-width:34px;height:23px;padding:0 5px;font-size:10px;border-radius:7px}
+ .production-team{min-height:125px}.production-worker img{height:96px}
+ .change-card{padding:8px 3px}.change-card strong{font-size:12px}.change-card em{font-size:18px}
+}
+@media(prefers-reduced-motion:reduce){.production-worker,.result-mark,.celebration i,.sad-team,.change-card em{animation:none}.celebration{display:none}.production-track span{transition:none}}
+
+/* Five cards per shop page */
+#shopRows{min-height:420px}
+.shop-row{min-height:84px;gap:12px}
+.shop-row>img{display:block;flex:0 0 72px;width:72px;height:72px;object-fit:contain;object-position:center;image-rendering:auto}
+.shop-description{min-width:0}
+.shop-row button{flex:0 0 auto}
+.shop-row button.is-locked{display:inline-flex;flex-direction:row-reverse;align-items:center;justify-content:center;gap:4px;min-width:76px}
+.shop-row button.is-locked img{display:block;width:17px;height:17px;object-fit:contain}
+.shop-pagination{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:13px;padding-top:12px;border-top:1px solid #ecd3c9}
+.shop-pagination button{min-width:32px;height:33px;padding:4px 8px;border:1px solid #e4b9b6;border-radius:8px;background:#fff7e9;color:#765562;font-size:12px;font-weight:800}
+.shop-pagination button.active{background:#e78498;border-color:#d77589;color:white}
+.shop-pagination button:disabled:not(.active){opacity:.45;cursor:default}
+@media(max-width:680px){
+ #shopRows{min-height:345px}.shop-row{min-height:69px;gap:7px;padding:5px 0}
+ .shop-row>img{flex-basis:52px;width:52px;height:52px}
+ .shop-row button.is-locked{min-width:63px;gap:2px}.shop-row button.is-locked img{width:14px;height:14px}
+ .shop-pagination{gap:3px}.shop-pagination button{min-width:29px;height:31px;padding:3px 5px}
+}
