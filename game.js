@@ -215,7 +215,7 @@
     $('editButton').textContent=editMode?'배치 취소':'배치 수정';
     $('launchButton').classList.toggle('layout-mode',editMode);
     $('launchButton').setAttribute('aria-label',editMode?'배치 저장':'새 컬렉션 만들기');
-    $('launchButton').querySelector('span').textContent=editMode?'✓':'🐾';
+    $('actionIcon').src=editMode?'./assets/check-light.svg':'./assets/paw-light.svg';
     $('launchButton').querySelector('small').textContent=editMode?'배치 저장':'새 컬렉션';
     $('guestBanner').innerHTML=state.localSave?'이 기기 저장 사용 중 · 다른 기기와 동기화되지 않습니다. <button type="button" id="saveInfo">저장 방식 보기</button>':'게스트 플레이 중 · 화면을 나가면 진행 내용이 사라집니다. <button type="button" id="saveInfo">저장 방식 보기</button>';
     $('saveInfo').addEventListener('click',showSaveInfo);

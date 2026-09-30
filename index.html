@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#18332e">
+  <meta name="theme-color" content="#61bec2">
   <title>ATELIER — 의류 회사 타이쿤</title>
   <link rel="stylesheet" href="./style.css">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2318332e'/%3E%3Cpath d='M12 48 32 12l20 36M20 37h24' fill='none' stroke='%23f7d37c' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="./assets/paw-icon.svg">
 </head>
 <body>
 <div class="game-shell">
   <header class="hud">
-    <button class="menu-toggle" id="menuToggle" type="button" aria-label="게임 메뉴 열기" aria-expanded="false">☰</button><div class="brand"><span class="brand-mark">A</span><div><strong id="companyNameBrand">ATELIER</strong><small>FASHION COMPANY TYCOON</small></div></div>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="게임 메뉴 열기" aria-expanded="false">☰</button><div class="brand"><span class="brand-mark"><img src="./assets/paw-coral.svg" alt=""></span><div><strong id="companyNameBrand">ATELIER</strong><small>FASHION COMPANY TYCOON</small></div></div>
     <div class="hud-stats" aria-label="회사 현황">
       <div class="hud-stat"><span>회사 레벨</span><strong id="companyLevel">1</strong></div>
       <div class="hud-stat"><span>자산</span><strong id="assetValue">₩120M</strong></div>
@@ -38,20 +38,26 @@
         <div class="placement-hint" id="placementHint" aria-live="polite">직원을 고용하고 가구를 구매해 보세요</div>
       </div>
       <aside class="office-panel" aria-label="사무실과 시즌 정보">
-        <span class="eyebrow">MY ATELIER · YEAR <span id="year">1</span></span>
-        <strong id="officeTitle">낡은 원룸 사무실</strong>
-        <div class="office-level-row"><span id="officeLevel">오피스 LV. 1 / 10</span><button id="upgradeButton" type="button">확장</button></div>
-        <small id="upgradeCost">₩95M · 출시 1회 필요</small>
+        <div class="office-group office-identity">
+          <span class="eyebrow">MY ATELIER · YEAR <span id="year">1</span></span>
+          <strong id="officeTitle">낡은 원룸 사무실</strong>
+          <div class="office-level-row"><span id="officeLevel">오피스 LV. 1 / 10</span><button id="upgradeButton" type="button">확장</button></div>
+          <small id="upgradeCost">₩95M · 출시 1회 필요</small>
+        </div>
         <div class="panel-divider"></div>
-        <span class="eyebrow">이번 시즌</span>
-        <strong id="season">봄</strong>
-        <span id="trend">트렌드 · 미니멀 셔츠</span>
+        <div class="office-group office-season">
+          <span class="eyebrow">이번 시즌</span>
+          <strong id="season">봄</strong>
+          <span id="trend">트렌드 · 미니멀 셔츠</span>
+        </div>
         <div class="panel-divider"></div>
-        <span class="eyebrow">사무실 수용 인원</span>
-        <span id="capacityText">직원 0/1 · 가구 0/2</span>
-        <span id="progressText">첫 컬렉션을 시작해 보세요.</span>
+        <div class="office-group office-capacity">
+          <span class="eyebrow">사무실 수용 인원</span>
+          <strong id="capacityText">직원 0/1 · 가구 0/2</strong>
+          <span id="progressText">첫 컬렉션을 시작해 보세요.</span>
+        </div>
       </aside>
-      <button class="paw-launch" id="launchButton" type="button" aria-label="새 컬렉션 만들기"><span aria-hidden="true">🐾</span><small>새 컬렉션</small></button>
+      <button class="paw-launch" id="launchButton" type="button" aria-label="새 컬렉션 만들기"><span class="paw-symbol" aria-hidden="true"><img id="actionIcon" src="./assets/paw-light.svg" alt=""></span><small>새 컬렉션</small></button>
     </div>
   </main>
   <section class="inventory" id="inventory" hidden aria-label="배치할 가구와 직원">
