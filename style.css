@@ -24,3 +24,66 @@ button:focus-visible{outline:3px solid #ffb562;outline-offset:2px}
 .modal-layer{position:fixed;z-index:20;inset:0;background:#0c1d17b8;display:grid;place-items:center;padding:16px}.modal-card{width:min(520px,100%);max-height:min(90vh,760px);overflow:auto;position:relative;border-radius:19px;background:#fffbef;padding:27px;box-shadow:0 24px 80px #07160e99}.modal-close{position:absolute;right:13px;top:10px;border:0;background:none;font-size:30px;color:#41574a}.modal-card h2{margin:3px 32px 8px 0;font-size:27px;line-height:1.2}.modal-card p{line-height:1.55;color:#52665a}.modal-kicker{font:700 12px 'DM Mono';color:#b15d36;letter-spacing:.1em}.choice-group{margin:19px 0}.choice-group>strong{display:block;margin-bottom:8px}.choice-row{display:flex;flex-wrap:wrap;gap:7px}.choice-row button{padding:10px 13px;border:1px solid #c8cbb8;background:#f3f0e4;border-radius:9px;font-size:14px}.choice-row button.selected{background:#dff09e;border:2px solid #4b6950;font-weight:800}.modal-primary{width:100%;margin-top:14px;padding:14px;border:0;border-radius:10px;background:#d96645;color:#fff;font-size:16px;font-weight:800}.report-score{display:grid;place-items:center;margin:18px auto;width:100px;height:100px;border:6px solid #e8bf60;border-radius:50%;background:#fff3c9;font-size:32px;font-weight:800}.report-line{padding:11px 0;border-top:1px solid #dedbc8}.report-line strong{float:right}.toast{position:fixed;z-index:30;left:50%;bottom:25px;transform:translate(-50%,130px);background:#19342b;color:white;border-radius:11px;padding:11px 18px;box-shadow:0 10px 30px #071e1999;transition:transform .25s;max-width:min(90vw,520px);text-align:center}.toast.show{transform:translate(-50%,0)}
 @media(max-width:1000px){.hud{gap:12px;padding:10px}.brand{min-width:200px}.brand strong{font-size:21px}.hud-stat{min-width:0;padding:8px}.hud-stat span{font-size:12px}.hud-stat strong{font-size:17px}.dock-summary{display:none}.dock-actions{width:100%;justify-content:space-between}.dock-button{flex:1}}
 @media(max-width:680px){.hud{flex-wrap:wrap;min-height:0}.brand{min-width:0;flex:1}.brand strong{font-size:19px}.brand-mark{width:34px;height:34px;font-size:25px}.brand small{font-size:8px}.save-button{font-size:12px;padding:7px 9px}.hud-stats{order:3;width:100%}.hud-stat{flex:1;justify-content:center;gap:5px;padding:7px 3px}.hud-stat span{font-size:11px}.hud-stat strong{font-size:14px}.guest-banner{font-size:11px;flex-wrap:wrap;gap:1px}.guest-banner button{font-size:11px}.play-area{padding:7px 5px 0}.scene{min-height:0;max-height:none;aspect-ratio:1/1.08;border-radius:12px}.room-backdrop{background-size:auto 100%;background-position:center}.scene-label,.season-card{top:8px;padding:7px 9px;border-radius:8px}.scene-label{left:8px}.scene-label strong{font-size:15px}.scene-label .eyebrow,.scene-label>span:last-child{font-size:10px}.season-card{right:8px}.season-card strong{font-size:16px}.season-card span,.season-card small{font-size:10px}.floor{top:38%;left:1%;right:1%;bottom:3%}.piece-label{font-size:9px;padding:2px 4px;bottom:-11px}.placement-hint{font-size:10px;bottom:4px;padding:5px 8px}.bottom-dock{min-height:72px;padding:7px 0}.dock-actions{gap:4px}.dock-button{font-size:11px;min-height:52px;padding:6px 3px;gap:2px;flex-direction:column}.button-icon{font-size:19px}.upgrade-button{display:flex}.upgrade-button small{display:none}.primary-button{font-size:12px}.inventory{padding:12px}.inventory-heading strong{font-size:16px}.inventory-heading span{font-size:11px}.inventory-item{flex-basis:96px;height:100px}.inventory-item img{width:57px;height:62px}.modal-card{padding:20px}.modal-card h2{font-size:22px}}
+
+/* Pastel, hand-drawn game art direction */
+:root{--forest:#512f45;--deep:#40273a;--cream:#fff8ed;--gold:#ffe18a;--coral:#e77375;--muted:#fce6db;--white:#fffdf9}
+html,body{background:#493044}
+.game-shell{background:#fff1e5}
+.hud{background:#58374d;box-shadow:0 5px 20px #40223955}
+.hud-stat{background:#765268;border-color:#aa8191}
+.hud-stat span{color:#fff1e8}.hud-stat strong{color:#ffe598}
+.save-button:hover{background:#765268}
+.guest-banner{background:#fff1cc;color:#593e45}
+.play-area{background:#654355}
+.scene{background:#ffe1c4;border-color:#a65e67;box-shadow:inset 0 0 30px #572a4d26,0 8px 0 #432b41}
+.room-backdrop{background-size:100% 100%;background-position:center}
+.scene-label,.season-card{background:#fff9f2ef;border-color:#e9bac0}
+.season-card strong{color:#c45a69}
+.scene.editing .tile.available{border-color:#c463a777;background:#fff5ff22}
+.scene.editing .tile.available:hover,.scene.editing .tile.available:focus-visible{background:#fff2b477;border-color:#b55a83}
+.scene.editing .tile.locked{background:#8e537744;border-color:#ba7d9577}
+.piece{transform:translate(-50%,-50%);overflow:visible}
+.piece img{position:absolute;left:-22%;bottom:50%;width:144%;height:165%;object-fit:contain;object-position:center bottom;pointer-events:auto;filter:drop-shadow(0 5px 2px #75425455);transform-origin:center bottom}
+.piece.worker img{left:-28%;width:156%;height:180%;animation:cat-working 1.45s ease-in-out infinite}
+.piece.worker:nth-of-type(3n) img{animation-delay:-.55s}
+.piece.worker:nth-of-type(3n+1) img{animation-delay:-1s}
+@keyframes cat-working{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-3px) rotate(2deg)}}
+@media(prefers-reduced-motion:reduce){.piece.worker img{animation:none}.scene.season-turn::after{animation:none}}
+.piece.selected:after{bottom:35%;border-color:#d7587e;background:#fbd4d788}
+.piece-label{bottom:-13px;background:#58374dee}
+.piece.worker .piece-label{background:#fff1c9;color:#512f45}
+.placement-hint{background:#58374dee}
+.bottom-dock{color:#fff}.dock-summary>span:last-child{color:#f4dce7}
+.dock-button{background:#81566f;border-color:#b486a1}
+.primary-button{background:#ffe18a;border-color:#edc968;color:#4a3042}
+.edit-button.active{background:#d86673;border-color:#f5abb0}
+.inventory{background:#fff8ee;border-color:#d28491}
+.inventory-heading button{background:#58374d}
+.inventory-item{background:#fffdf9;border-color:#dec3be}
+.inventory-item.selected{border-color:#d4677d;background:#fff0e6;box-shadow:0 0 0 2px #f4c2ab}
+.inventory-item small{background:#58374d}
+.inventory-item img{width:79px;height:78px;object-fit:contain}
+.modal-card{background:#fffaf3}
+.modal-kicker{color:#bd5b72}.modal-primary{background:#cd6075}
+.choice-row button.selected{background:#ffdebb;border-color:#b65873}
+.report-score{border-color:#eabb77;background:#fff2c7}
+.staff-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.staff-choice{display:flex;align-items:center;flex-direction:column;gap:4px;padding:8px 5px;border:1px solid #ead3cc;border-radius:10px;background:#fff6ee;text-align:center;font-size:12px;font-weight:700;cursor:pointer}
+.staff-choice input{align-self:flex-start;accent-color:#bb5972}
+.staff-choice img{height:64px;max-width:85px;object-fit:contain}
+.chance-preview{margin:12px 0;padding:10px;border-radius:9px;background:#fff0ce;color:#6a3b4c;font-weight:800;font-size:14px}
+.customer-review{margin:12px 0;padding:11px 14px;border-left:4px solid #d7798a;background:#fff0ea;color:#53374a}
+.discovery{padding:10px;border-radius:8px;background:#ffedbc;font-weight:700}
+.research-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid #e8d5ca}
+.research-row small{display:block;margin-top:3px;color:#705d60}
+.research-row button{padding:8px 11px;border:0;border-radius:8px;background:#a65771;color:#fff;white-space:nowrap}
+.research-row button:disabled{background:#e3d4ce;color:#6e6463;cursor:default}
+.scene.season-turn::after{content:'';position:absolute;z-index:8;inset:0;background:#fff8d8;pointer-events:none;animation:season-flash .7s ease-out forwards}
+@keyframes season-flash{from{opacity:.65}to{opacity:0}}
+@media(max-width:680px){
+  .room-backdrop{background-size:100% 100%;background-position:center}
+  .staff-choices{gap:4px}.staff-choice{font-size:10px;padding:6px 2px}.staff-choice img{height:48px}
+  .dock-actions{flex-wrap:wrap}.dock-button{flex:1 1 22%;min-width:0}.dock-button small{display:none}
+  .piece img{width:155%;left:-27%;height:170%}.piece.worker img{width:170%;left:-35%;height:185%}
+  .inventory-item img{width:65px;height:68px}
+}
