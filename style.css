@@ -268,3 +268,71 @@ html,body{background:#98d7d0;color:#294d55}
 .piece.worker .piece-label{background:#fff3c9;color:#315e61}
 .toast{background:#296b70;color:#fff}
 .modal-close{color:#3b6f72}
+
+/* Headerless atelier canvas: warm pink and butter yellow */
+:root{--forest:#654654;--deep:#513b46;--cream:#fff9eb;--gold:#ffe49a;--coral:#ed8494;--muted:#ffe9dd;--white:#fffdf8}
+html,body{background:#fff1d4;color:#594850}
+.game-shell{max-width:none;background:#fff1d4;box-shadow:none}
+.play-area{padding:10px;min-height:100vh;background:#fff1d4}
+.play-stage{display:block;min-height:calc(100vh - 20px);background:#fff1d4}
+.play-stage .scene{min-height:calc(100vh - 20px);max-height:none;aspect-ratio:auto;border:2px solid #e7b1aa;border-radius:22px;background:radial-gradient(circle at 42% 48%,#fff7e4 0,#ffe4dc 62%,#f9d7c7 100%);box-shadow:0 5px 0 #e6b4aa}
+.room-world{left:40%;box-shadow:0 14px 28px #b0797554}
+.room-vignette{background:linear-gradient(180deg,#fff9ed0a,transparent 55%,#8c536118)}
+.game-overlay-top{position:absolute;z-index:7;top:18px;left:18px;right:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;pointer-events:none}
+.game-identity{display:flex;align-items:center;gap:9px;min-width:0;pointer-events:auto}
+.menu-toggle{flex:0 0 44px;width:44px;height:44px;border-color:#efb5ad;border-radius:14px;background:#fffaf2;color:#855468;box-shadow:0 3px 8px #ac78713b}
+.menu-toggle:hover{background:#ffe9da}
+.brand{min-width:0;width:auto;padding:4px 12px 4px 5px;border:1px solid #f0c7bd;border-radius:15px;background:#fffaf1ec;box-shadow:0 3px 10px #b9827940}
+.brand-mark{width:37px;height:37px;background:#fff0dd}.brand-mark img{width:27px;height:27px}
+.brand strong{font:800 18px 'DM Sans',Pretendard,system-ui,sans-serif;letter-spacing:.015em;color:#674954;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand small{font-size:8px;color:#9b767c;letter-spacing:.055em}
+.hud-stats{display:flex;flex:0 1 auto;gap:6px;justify-content:flex-end;pointer-events:auto}
+.hud-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:82px;padding:6px 11px;border:1px solid #edbab0;border-radius:12px;background:#fffaf2f2;box-shadow:0 3px 10px #b9827936}
+.hud-stat span{font-size:10px;font-weight:700;color:#92737a}.hud-stat strong{font-size:15px;line-height:1.2;color:#68505b}
+.game-menu{top:69px;left:18px;border-color:#edb6b1;background:#fffaf1;box-shadow:0 12px 28px #9f6f7152}
+.game-menu button{color:#614b55}.game-menu button:hover,.game-menu button:focus-visible,.game-menu button.active{background:#ffe9db}
+.office-panel{position:absolute;z-index:6;top:89px;right:18px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px;width:238px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:#604b53;text-align:center}
+.office-group{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:13px 12px;border:1px solid #ecc0b3;border-radius:15px;background:#fffaf1f2;box-shadow:0 4px 12px #b982793c}
+.office-panel .eyebrow{font:700 10px 'DM Mono',monospace;letter-spacing:.06em;color:#a06e76}
+.office-panel #officeTitle{font-size:17px;line-height:1.3;color:#604b53}
+.office-level-row{justify-content:center;gap:7px;font-size:12px;color:#74535e}
+.office-level-row .office-info-button{display:grid;place-items:center;width:24px;height:24px;padding:0;border:1px solid #e6a7a7;border-radius:50%;background:#ffdae0;color:#754b60;font-size:17px;line-height:1}
+.office-level-row .office-info-button:hover{background:#ffc5d0}
+.office-season{padding:8px 10px}
+.office-panel .office-season #season{font:800 13px 'DM Sans',Pretendard,system-ui,sans-serif;color:#d66f83}
+.office-panel #trend{font-size:11px;line-height:1.35;font-weight:700;color:#765c63}
+.guest-banner{position:absolute;z-index:5;left:20px;bottom:18px;max-width:min(470px,calc(100% - 230px));min-height:0;flex-wrap:wrap;padding:7px 12px;border:1px solid #efcaaf;border-radius:11px;background:#fff6e5e8;color:#745b61;font-size:11px;box-shadow:0 3px 10px #bd8c7752}
+.guest-banner button{color:#b05b70;font-size:11px}
+.play-stage .placement-hint{top:auto;bottom:18px;left:42%;max-width:42%;background:#a96779e6;font-size:11px}
+.paw-launch{right:22px;bottom:22px;background:#ef8ea0;border-color:#fff9e9;color:#fffdf8;box-shadow:0 5px 0 #c56b82,0 9px 22px #a4697460}
+.paw-launch:hover{background:#e6778f}.paw-launch.layout-mode{background:#f3ae80;box-shadow:0 5px 0 #c27e65,0 9px 22px #a4697460}
+.inventory{background:#fffaf0;border-color:#e8b5aa}.inventory-heading button{background:#b76b7d}.inventory-item small{background:#9a6977}
+.modal-layer{background:#593f4caa}.modal-card{background:#fffbf2}.modal-kicker{color:#bc7080}.modal-close{color:#81636c}.modal-primary{background:#d97387}
+.choice-row button.selected{background:#ffe4d8;border-color:#dc8793}.chance-preview{background:#fff1d2;color:#76515c}.customer-review{border-color:#e4939e}
+.research-row button,.shop-row button{background:#bd7083}.profile-portrait{background:#fff1e7}
+.scene.editing .room-world .tile.available{background:#e39bada6}.scene.editing .room-world .tile.available::before{background:#ffe6b879}.scene.editing .room-world .tile.available:hover::before{background:#ffe9bfe6}
+.piece-label{background:#a66377ed}.piece.worker .piece-label{color:#6e5159}.toast{background:#9b6475;color:white}
+.office-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:18px 0}
+.office-detail-grid>div{display:flex;flex-direction:column;gap:3px;padding:12px;border:1px solid #f0d0bd;border-radius:11px;background:#fff4e6}
+.office-detail-grid span{font-size:12px;color:#906f72}.office-detail-grid strong{font-size:17px;color:#624a55}
+.office-upgrade-note{padding:11px;border-radius:10px;background:#fff0d7;font-size:13px}
+@media(max-width:680px){
+ .play-area{padding:5px}.play-stage{min-height:0}
+ .play-stage .scene{min-height:0;aspect-ratio:1/1.12;border-radius:15px}
+ .room-world{left:50%;top:58%;width:70%;max-width:100%}
+ .game-overlay-top{top:9px;left:9px;right:9px;gap:5px}
+ .game-identity{gap:4px}.menu-toggle{flex-basis:34px;width:34px;height:34px;font-size:19px;border-radius:10px}
+ .brand{gap:4px;padding:3px 5px}.brand-mark{width:26px;height:26px}.brand-mark img{width:22px;height:22px}
+ .brand strong{max-width:74px;font-size:11px}.brand small{display:none}
+ .hud-stats{width:auto;gap:3px;order:0}.hud-stat{flex:0 1 auto;min-width:48px;padding:4px 3px;border-radius:8px;gap:0}.hud-stat span{font-size:8px}.hud-stat strong{font-size:10px}
+ .game-menu{top:48px;left:9px}
+ .office-panel{position:relative;top:auto;right:auto;display:flex;flex-direction:row;align-items:stretch;gap:5px;width:100%;margin-top:7px}
+ .office-group{flex:1;min-width:0;gap:3px;padding:8px 6px;border-radius:10px}
+ .office-panel .eyebrow{font-size:8px}.office-panel #officeTitle{font-size:12px}.office-level-row{font-size:10px}
+ .office-level-row .office-info-button{width:21px;height:21px;font-size:15px}
+ .office-panel .office-season #season{font-size:11px}.office-panel #trend{font-size:10px}
+ .guest-banner{position:relative;left:auto;bottom:auto;max-width:100%;margin-top:6px;padding:5px 8px;font-size:10px;box-shadow:none}
+ .guest-banner button{font-size:10px}.play-stage .placement-hint{bottom:5px;left:50%;max-width:80%;font-size:9px}
+ .paw-launch{right:12px;bottom:103px;padding:7px 11px}.paw-launch small{font-size:10px}
+}
+.start-layer{background:#755260c7}.start-card{background:#fffaf0;border-color:#e6b0b2;box-shadow:0 20px 55px #69475470}.start-card input{border-color:#edc4b8;color:#604b53}.start-card p{color:#7c666c}
