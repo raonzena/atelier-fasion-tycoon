@@ -602,16 +602,12 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .collection-row-result{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 10px;text-align:right;font-variant-numeric:tabular-nums}
 .collection-row-result strong,.collection-row-result span{white-space:nowrap}
 .collection-row-result span{font-weight:800;color:#a95872}
-/* Center the visible sprite over its cell or multi-cell footprint. */
-.room-world .piece img{object-position:center center}
-.room-world .piece.worker{--sprite-half-height:75%}
-.room-world .piece.furniture{--sprite-half-height:89%}
-.room-world .piece.wide-furniture{--sprite-half-height:92.5%}
-.room-world .piece.wide-furniture.kind-longRack{--sprite-half-height:117.5%}
-.room-world .piece.wide-furniture.kind-breakroom{--sprite-half-height:122.5%}
-.room-world .piece.worker img{top:-25%;bottom:auto}
-.room-world .piece.furniture img{top:-39%;bottom:auto;transform-origin:50% 50%}
-.room-world .piece.wide-furniture img{top:-42.5%;bottom:auto}
-.room-world .piece.wide-furniture.kind-longRack img{top:-67.5%;bottom:auto}
-.room-world .piece.wide-furniture.kind-breakroom img{top:-72.5%;bottom:auto}
-.room-world .piece .piece-label{top:calc(50% + var(--sprite-half-height) + 5px)}
+/* The piece's center is the center of its floor diamond. Put the sprite's
+   contact point there, including the transparent padding below the artwork. */
+.room-world .piece img{object-position:center bottom;top:auto}
+.room-world .piece.worker img{bottom:42%}
+.room-world .piece.furniture img{bottom:38%;transform-origin:50% 100%}
+.room-world .piece.wide-furniture img{bottom:36%}
+.room-world .piece.wide-furniture.kind-longRack img{bottom:34%}
+.room-world .piece.wide-furniture.kind-breakroom img{bottom:42%}
+.room-world .piece .piece-label{top:calc(50% + 8px)}

@@ -78,8 +78,8 @@
     left:FLOOR_ORIGIN.left+FLOOR_RIGHT.left*u+FLOOR_LEFT.left*v,
     top:FLOOR_ORIGIN.top+FLOOR_RIGHT.top*u+FLOOR_LEFT.top*v
   });
-  const cellCenter = (x,y) => {
-    const n=gridSize(),u=(x+.5)/n,v=(y+.5)/n;
+  const footprintCenter = (x,y,span=1) => {
+    const n=gridSize(),u=(x+span/2)/n,v=(y+.5)/n;
     return floorPoint(u,v);
   };
   const trends = [
@@ -272,7 +272,7 @@
         button.style.setProperty('--furniture-tilt',(furnitureTilt[d.id]||0)+'deg');
         if(d.id==='longRack')button.style.setProperty('--rack-width',(FLOOR_RIGHT.left*d.spanX/gridSize()/1.2)+'%');
       }
-      const center=cellCenter(p.x+((d.spanX||1)-1)/2,p.y);
+      const center=footprintCenter(p.x,p.y,d.spanX||1);
       button.style.left=center.left+'%';
       button.style.top=center.top+'%';
       button.style.zIndex=5+p.x+p.y;
