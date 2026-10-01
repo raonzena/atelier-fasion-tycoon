@@ -475,8 +475,7 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 @media(max-width:680px){.room-world .piece{width:var(--piece-size-mobile,12%);height:var(--piece-size-mobile,12%)}}
 
 /* The runway replaces the office scene while a fashion week entry is active. */
-.scene.fashion-week-mode .room-world{width:100%!important;height:100%;max-height:none;aspect-ratio:auto;left:50%;top:50%;border-radius:0;box-shadow:none}
-.scene.fashion-week-mode .room-backdrop{background-size:cover;background-position:center}
+.scene.fashion-week-mode .room-backdrop{background-size:100% 100%;background-position:center}
 .scene.fashion-week-mode .floor,.scene.fashion-week-mode .room-vignette,.scene.fashion-week-mode .placement-hint{display:none}
 .scene.fashion-week-mode .piece{display:none}
 .event-notice{display:block;margin-top:5px;padding:5px 7px;border-radius:7px;background:#ffe5a7;color:#855369;font-size:11px;font-weight:800;text-align:center}
@@ -497,6 +496,19 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .runway-podium li.our-brand{background:#ffe5ad;color:#884e69;font-weight:800}
 .runway-prize{font-weight:800;color:#a65070}
 @media(max-width:680px){.event-notice{font-size:9px;padding:4px}.fashion-week-preview{height:160px}.fashion-week-preview.compact{height:130px}}
+
+/* A short, dedicated transition covers the result modal until the office art is ready. */
+.office-return-layer{position:fixed;z-index:45;inset:0;display:grid;place-items:center;padding:20px;background:#fff1d4;opacity:0;transition:opacity .2s ease;pointer-events:auto}
+.office-return-layer.visible{opacity:1}
+.office-return-card{display:flex;flex-direction:column;align-items:center;gap:9px;width:min(320px,100%);padding:29px 25px;border:1px solid #edc5bc;border-radius:20px;background:#fffaf1;box-shadow:0 15px 42px #b87f8270;color:#6c4c5b;text-align:center}
+.office-return-card img{width:48px;height:48px;object-fit:contain;animation:return-paw 1s ease-in-out infinite alternate}
+.office-return-card strong{font-size:18px;line-height:1.4}
+.office-return-card span{font-size:13px;color:#9a7380}
+.office-return-track{width:100%;height:7px;margin-top:9px;overflow:hidden;border-radius:99px;background:#f8dfd7}
+.office-return-track i{display:block;width:38%;height:100%;border-radius:inherit;background:#ed91a4;animation:return-progress 1s ease-in-out infinite alternate}
+@keyframes return-paw{to{transform:translateY(-6px) rotate(-7deg)}}
+@keyframes return-progress{to{transform:translateX(165%)}}
+@media(prefers-reduced-motion:reduce){.office-return-layer{transition:none}.office-return-card img,.office-return-track i{animation:none}}
 
 /* Level-up celebration and count changes */
 .level-up-panel{margin:14px 0;padding:10px;border:1px solid #f1cbbd;border-radius:15px;background:#fff8ec}

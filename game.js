@@ -310,7 +310,7 @@
     $('trend').textContent='트렌드 · '+trend.style+' '+trend.item;
     $('eventNotice').hidden=!isFashionWeekMonth();
     const worldWidth=officeArtworkWidth(state.officeLevel);
-    $('roomWorld').style.width=eventVenueActive?'100%':worldWidth+'%';
+    $('roomWorld').style.width=worldWidth+'%';
     // The painted office expands, but sprites and their hit targets keep the same screen size.
     $('roomWorld').style.setProperty('--piece-size',700/worldWidth+'%');
     $('roomWorld').style.setProperty('--piece-size-mobile',840/worldWidth+'%');
@@ -347,8 +347,32 @@
   };
   let accountChoiceResolve=null;
   let pendingLevelUp=null;
+  let returningToOffice=false;
+  const returnToOffice = async () => {
+    if(returningToOffice)return;
+    returningToOffice=true;
+    const layer=$('officeReturnLayer');
+    layer.hidden=false;
+    requestAnimationFrame(()=>layer.classList.add('visible'));
+    await new Promise(resolve=>setTimeout(resolve,180));
+    $('modalLayer').hidden=true;$('modalContent').replaceChildren();
+    const artwork=(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+'.webp';
+    const image=new Image();
+    image.src='./assets/'+artwork;
+    const ready=typeof image.decode==='function'?image.decode().catch(()=>{}):new Promise(resolve=>{
+      image.onload=image.onerror=resolve;
+      if(image.complete)resolve();
+    });
+    await Promise.all([
+      new Promise(resolve=>setTimeout(resolve,500)),
+      Promise.race([ready,new Promise(resolve=>setTimeout(resolve,1600))])
+    ]);
+    eventVenueActive=false;render();
+    requestAnimationFrame(()=>layer.classList.remove('visible'));
+    setTimeout(()=>{layer.hidden=true;returningToOffice=false;},300);
+  };
   const closeModal = () => {
-    if(isProducing)return;
+    if(isProducing||returningToOffice)return;
     if(accountChoiceResolve){accountChoiceResolve(null);accountChoiceResolve=null;}
     if(pendingLevelUp){
       const details=pendingLevelUp;
@@ -359,8 +383,8 @@
       $('modalTitle').focus();
       return;
     }
+    if(eventVenueActive){void returnToOffice();return;}
     $('modalLayer').hidden=true;$('modalContent').replaceChildren();
-    if(eventVenueActive){eventVenueActive=false;render();}
   };
   const showModal = html => {
     $('modalContent').innerHTML=html;

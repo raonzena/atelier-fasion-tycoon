@@ -16,14 +16,19 @@ const elements = {
   modalContent: {innerHTML: '<div>컬렉션 결과</div>', querySelectorAll: () => [], replaceChildren() {this.innerHTML = ''; }},
   modalClose: {hidden: false, focus() {}},
   modalTitle: {focus() {}},
-  levelUpDone: {}
+  levelUpDone: {},
+  officeReturnLayer: {hidden: true, classList: {add() {}, remove() {}}}
 };
-let animations = 0;
+let animations = 0, renders = 0, loadedArtwork = '';
 const context = {
   $: id => elements[id],
   isProducing: false,
   eventVenueActive: false,
-  render: () => {},
+  state: {officeLevel: 4},
+  Image: class {set src(value) {loadedArtwork=value;} decode() {return Promise.resolve();}},
+  setTimeout: callback => {callback();},
+  requestAnimationFrame: callback => callback(),
+  render: () => {renders++;},
   animateLevelChanges: () => {animations++;}
 };
 vm.createContext(context);
@@ -43,4 +48,17 @@ elements.modalLayer.hidden = false;
 context.api.closeModal(); // A release without a level-up returns directly to the office.
 assert.equal(elements.modalLayer.hidden, true);
 assert.equal(animations, 1);
-console.log('Collection result and level-up modal sequence passed.');
+
+context.eventVenueActive = true;
+elements.modalLayer.hidden = false;
+elements.officeReturnLayer.hidden = true;
+context.api.closeModal(); // Fashion Week shows its own transition before restoring the office.
+assert.equal(elements.officeReturnLayer.hidden, false);
+setImmediate(() => {
+  assert.equal(elements.modalLayer.hidden, true);
+  assert.equal(elements.officeReturnLayer.hidden, true);
+  assert.equal(context.eventVenueActive, false);
+  assert.equal(loadedArtwork, './assets/office-mid.webp');
+  assert.equal(renders, 1);
+  console.log('Collection result, level-up modal, and Fashion Week office return passed.');
+});
