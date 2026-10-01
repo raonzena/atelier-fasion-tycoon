@@ -88,9 +88,9 @@ const ready = (async () => {
   authApi.onAuthStateChanged(auth,async user=>{
     if(!user){
       if(activeUser){activeUser=null;latest=null;clearTimeout(timer);bridge.restoreGuest();}
-      sync='동기화 대기 중';feedback();return;
+      sync='동기화 대기 중';feedback();bridge.finishStartup();return;
     }
-    if(activeUser?.uid===user.uid)return;
+    if(activeUser?.uid===user.uid){bridge.finishStartup();return;}
     sync='저장 내용 불러오는 중';feedback();
     try{
       const document=await firestoreApi.getDoc(firestoreApi.doc(db,'saves',user.uid));
@@ -103,6 +103,7 @@ const ready = (async () => {
       const guest=bridge.hasProgress() && !localStorage.getItem(adoptedKey(user.uid))?bridge.snapshot():null;
       const device=pending||guest;
       if(remote && device && comparable(remote)!==comparable(device)){
+        bridge.finishStartup(true);
         const selection=await bridge.chooseSave();
         if(!selection){await authApi.signOut(auth);return;}
         activeUser=user;
@@ -117,10 +118,12 @@ const ready = (async () => {
         if(!remote && chosen.companyName)queueSave(chosen);
       }
       if(remote && !latest)sync='저장 완료';
-      feedback();bridge.toast('계정에 연결했어요. 다른 기기에서도 이어할 수 있어요.');
+      feedback();bridge.finishStartup();bridge.toast('계정에 연결했어요. 다른 기기에서도 이어할 수 있어요.');
     }catch(error){
       sync='불러오기 실패';feedback();bridge.toast(errorMessage(error));
       await authApi.signOut(auth);
+    }finally{
+      bridge.finishStartup();
     }
-  },error=>{sync='로그인 상태 확인 실패';feedback();bridge.toast(errorMessage(error));});
-})().catch(error=>{connectionError=error;sync='계정 서비스 연결 실패';feedback();bridge.toast(errorMessage(error));});
+  },error=>{sync='로그인 상태 확인 실패';feedback();bridge.finishStartup();bridge.toast(errorMessage(error));});
+})().catch(error=>{connectionError=error;sync='계정 서비스 연결 실패';feedback();bridge.finishStartup();bridge.toast(errorMessage(error));});

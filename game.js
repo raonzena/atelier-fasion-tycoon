@@ -435,7 +435,25 @@
       try{await cloud.resetPassword(email);$('accountError').textContent='재설정 메일을 보냈어요. 메일함을 확인해 주세요.';}catch(error){report(error);}
     };
   };
+  let startupRevealed=false;
+  const finishStartup = (holdStart=false) => {
+    if(!holdStart){
+      const linked=Boolean(window.atelierCloud?.isSignedIn());
+      $('startLayer').hidden=Boolean(state.companyName);
+      $('startTitle').textContent=linked?'회사 이름을 정해 주세요':'나만의 패션 회사를 시작해요';
+      $('startDescription').textContent=linked?'고객 0명, 빈 사무실에서 시작하고 진행 내용은 계정에 저장됩니다.':'고객 0명, 빈 사무실에서 시작합니다. 게스트 플레이는 화면을 나가면 초기화돼요.';
+      $('startSignIn').hidden=linked;
+    }
+    if(startupRevealed)return;
+    startupRevealed=true;
+    const loading=$('initialLoading');
+    loading.setAttribute('aria-busy','false');
+    loading.classList.add('finished');
+    setTimeout(()=>{loading.hidden=true;},240);
+    if(typeof window.scrollTo==='function')window.scrollTo(0,0);
+  };
   window.atelierGameBridge={
+    finishStartup,
     snapshot:()=>JSON.parse(JSON.stringify(state)),
     hasProgress:()=>Boolean(state.companyName),
     applyCloud:saved=>{state=hydrate(saved);editMode=false;selected=null;layoutSnapshot=null;$('startLayer').hidden=Boolean(state.companyName);closeModal();render();},
@@ -858,7 +876,7 @@
     setTimeout(resetStartScroll,550);
     toast(state.companyName+' 설립 완료! 직원 고용부터 시작해 보세요.');
   });
-  $('startLayer').hidden=Boolean(state.companyName);
+  $('startLayer').hidden=true;
   const showUpgrade = () => {
     if(state.officeLevel>=OFFICE_MAX){toast('오피스 최고 레벨에 도달했어요.');return;}
     const price=upgradePrice(state.officeLevel);

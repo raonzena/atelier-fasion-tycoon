@@ -500,6 +500,8 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 /* A short, dedicated transition covers the result modal until the office art is ready. */
 .office-return-layer{position:fixed;z-index:45;inset:0;display:grid;place-items:center;padding:20px;background:#fff1d4;opacity:0;transition:opacity .2s ease;pointer-events:auto}
 .office-return-layer.visible{opacity:1}
+.initial-loading{z-index:65}
+.initial-loading.finished{opacity:0;pointer-events:none}
 .office-return-card{display:flex;flex-direction:column;align-items:center;gap:9px;width:min(320px,100%);padding:29px 25px;border:1px solid #edc5bc;border-radius:20px;background:#fffaf1;box-shadow:0 15px 42px #b87f8270;color:#6c4c5b;text-align:center}
 .office-return-card img{width:48px;height:48px;object-fit:contain;animation:return-paw 1s ease-in-out infinite alternate}
 .office-return-card strong{font-size:18px;line-height:1.4}
