@@ -566,6 +566,12 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .toast{z-index:50}
 .staff-choice.is-exhausted{opacity:.55;cursor:not-allowed}
 .staff-usage{display:block;font-size:12px;line-height:1.35;color:#805469}
+.selected-stats{margin:14px 0}
+.selected-stats>strong{display:block;margin-bottom:8px;color:#694a58}
+.selected-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.selected-stat-grid>div{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid #efd7cc;border-radius:10px;background:#fff4eb}
+.selected-stat-grid span{font-size:13px;font-weight:700;color:#694a58}
+.selected-stat-grid strong{font-size:20px;color:#b65e7b;font-variant-numeric:tabular-nums}
 .section-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
 .section-tabs button{flex:1 1 70px;min-width:0;padding:10px 8px;border:1px solid #e8c7c2;border-radius:9px;background:#fff6ed;color:#735261;font:inherit;font-weight:750;cursor:pointer}
 .section-tabs button.active{background:#bd7083;color:#fff;border-color:#bd7083}

@@ -593,10 +593,11 @@
     const choices={target:trend.target,item:baseCategories.includes(trend.item)?trend.item:'티셔츠',style:trend.style,material:'면'};
     const eligible=hiredWorkers().filter(w=>participationCount(w.id)<MAX_YEARLY_PRODUCTIONS);
     const assigned=Object.fromEntries(hiredWorkers().map(w=>[w.id,eligible.slice(0,MAX_PRODUCTION_STAFF).includes(w)]));
-    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RUNWAY':'NEW COLLECTION')+' · '+trend.season+' '+currentMonth()+'월</span><h2 id="modalTitle">'+(fashionWeek?'패션위크 컬렉션 기획':'다음 컬렉션 기획')+'</h2>'+(fashionWeek?'<div class="fashion-week-preview compact"><img data-skeleton src="./assets/fashion-week.webp" alt="패션위크 런웨이 행사장"></div>':'')+'<p>제작비 ₩38M · 이번 시즌의 시장 흐름과 팀 능력치를 고려하세요.</p><div id="choices"></div><div class="choice-group"><strong>제작에 배정할 직원 · 최대 4명</strong><p>직원마다 게임 내 1년에 최대 5번 참여할 수 있어요. 새해가 되면 횟수가 초기화됩니다.</p><div id="staffChoices" class="staff-choices"></div></div><div id="chancePreview" class="chance-preview"></div><button class="modal-primary" id="confirmLaunch" type="button">'+(fashionWeek?'제작하고 런웨이 참가':'제작하고 출시하기')+'</button>');
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RUNWAY':'NEW COLLECTION')+' · '+trend.season+' '+currentMonth()+'월</span><h2 id="modalTitle">'+(fashionWeek?'패션위크 컬렉션 기획':'다음 컬렉션 기획')+'</h2>'+(fashionWeek?'<div class="fashion-week-preview compact"><img data-skeleton src="./assets/fashion-week.webp" alt="패션위크 런웨이 행사장"></div>':'')+'<p>제작비 ₩38M · 이번 시즌의 시장 흐름과 팀 능력치를 고려하세요.</p><div id="choices"></div><div class="choice-group"><strong>제작에 배정할 직원 · 최대 4명</strong><p>직원마다 게임 내 1년에 최대 5번 참여할 수 있어요. 새해가 되면 횟수가 초기화됩니다.</p><div id="staffChoices" class="staff-choices"></div></div><div class="selected-stats"><strong>선택한 직원의 능력치 합계</strong><div id="selectedStats" class="selected-stat-grid" aria-live="polite"></div></div><div id="chancePreview" class="chance-preview"></div><button class="modal-primary" id="confirmLaunch" type="button">'+(fashionWeek?'제작하고 런웨이 참가':'제작하고 출시하기')+'</button>');
     const update=()=>{
       const result=successChance(choices,assigned);
       const selectedCount=Object.values(assigned).filter(Boolean).length;
+      $('selectedStats').innerHTML=statLabels.map(([key,label])=>'<div><span>'+label+'</span><strong>'+result[2][key]+'</strong></div>').join('');
       $('chancePreview').textContent=(selectedCount?'예상 성공률 '+result[0]+'% · 합산 목표 '+result[3]+' · 트렌드 일치 '+result[1]+'/3':'참여할 직원을 선택해 주세요.')+' · 참여 직원 '+selectedCount+'/'+MAX_PRODUCTION_STAFF+'명'+(fashionWeek?' · 런웨이 입상 최소 14점':'');
       $('confirmLaunch').disabled=selectedCount===0;
     };
@@ -623,7 +624,7 @@
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
       const text=document.createElement('span');text.textContent=w.name+' · '+w.role+' · LV.'+state.staff[w.id].level;
       const stats=document.createElement('small');stats.className='staff-choice-stats';stats.textContent=statSummary(w);
-      const usage=document.createElement('small');usage.className='staff-usage';usage.textContent='올해 남은 참여 횟수 '+remaining+'회'+(exhausted?' · 선택 불가':'');
+      const usage=document.createElement('small');usage.className='staff-usage';usage.textContent='남은 참여 횟수 '+remaining+'회'+(exhausted?' · 선택 불가':'');
       if(exhausted)label.classList.add('is-exhausted');
       label.append(checkbox,img,text,stats,usage);$('staffChoices').append(label);
     });
@@ -773,7 +774,7 @@
   const showStaff = (role='디자인') => {
     const roles=['디자인','생산','마케팅'];
     if(!roles.includes(role))role=roles[0];
-    showModal('<span class="modal-kicker">MY TEAM</span><h2 id="modalTitle">직원</h2><p>직원별 능력치와 올해 남은 참여 횟수를 확인하세요. 한 해에 직원당 최대 5회 참여할 수 있습니다.</p><div class="section-tabs" id="staffTabs" role="tablist" aria-label="직군"></div><div id="staffRows" class="staff-roster" role="tabpanel"></div>');
+    showModal('<span class="modal-kicker">MY TEAM</span><h2 id="modalTitle">직원</h2><p>직원별 능력치와 남은 참여 횟수를 확인하세요. 한 해에 직원당 최대 5회 참여할 수 있습니다.</p><div class="section-tabs" id="staffTabs" role="tablist" aria-label="직군"></div><div id="staffRows" class="staff-roster" role="tabpanel"></div>');
     roles.forEach(name=>{
       const button=document.createElement('button');button.type='button';button.textContent=name;button.setAttribute('role','tab');
       button.setAttribute('aria-selected',String(name===role));button.className=name===role?'active':'';
@@ -785,7 +786,7 @@
       const row=document.createElement('button');row.type='button';row.className='staff-roster-card';
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
       const detail=document.createElement('span');
-      detail.innerHTML='<strong>'+w.name+' · LV.'+state.staff[w.id].level+'</strong><small>'+statSummary(w)+'</small><small>올해 남은 참여 횟수 '+remainingParticipations(w.id)+'회</small>';
+      detail.innerHTML='<strong>'+w.name+' · LV.'+state.staff[w.id].level+'</strong><small>'+statSummary(w)+'</small><small>남은 참여 횟수 '+remainingParticipations(w.id)+'회</small>';
       row.append(img,detail);row.onclick=()=>showWorkerProfile(w.id,role);$('staffRows').append(row);
     });
   };
@@ -843,7 +844,7 @@
   const showWorkerProfile = (id,returnRole=null) => {
     const w=definition(id),member=state.staff[id];
     if(!w||!member)return;
-    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><div class="report-line">올해 남은 참여 횟수 <strong>'+remainingParticipations(id)+'회</strong></div><p>제작에 참여하면 경험을 얻고, 새해에는 참여 가능 횟수가 초기화됩니다.</p>'+(returnRole?'<button class="account-secondary" id="backToStaff" type="button">직원 목록으로</button>':''));
+    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><div class="report-line">남은 참여 횟수 <strong>'+remainingParticipations(id)+'회</strong></div><p>제작에 참여하면 경험을 얻고, 새해에는 참여 가능 횟수가 초기화됩니다.</p>'+(returnRole?'<button class="account-secondary" id="backToStaff" type="button">직원 목록으로</button>':''));
     if(returnRole)$('backToStaff').onclick=()=>showStaff(returnRole);
   };
   const pageSize=5;
