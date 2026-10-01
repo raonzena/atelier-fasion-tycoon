@@ -40,3 +40,17 @@
 
 사무실 기본 배경은 첫 화면에서 우선 로딩하고, 다음 사무실 배경과 실패 연출은 브라우저 여유 시간에 미리 받습니다. 이미지 에셋은 서비스 워커가 사용 시 저장해 재방문에 재활용합니다. 게임 로직과 페이지는 캐시 대상에서 제외해 업데이트가 오래 남지 않도록 했습니다.
 사무실 배경과 직원·가구·제작 삽화는 아직 다운로드 중이면 해당 이미지 영역에 은은한 스켈레톤을 표시하고, 로딩이 끝나면 제거합니다.
+
+## Vercel에서 계정 저장 사용하기
+
+GitHub 저장소를 Vercel 프로젝트에 연결하고 프레임워크 프리셋을 **Other**, 루트 디렉터리를 저장소 루트로 설정합니다. 이 정적 게임에는 빌드 명령이 필요하지 않습니다. `api/firebase-config.mjs` 함수가 `/api/firebase-config`를 제공합니다.
+
+Vercel 프로젝트 **Settings → Environment Variables**에 `FIREBASE_WEB_CONFIG`를 추가합니다. 값은 Firebase 콘솔의 웹 앱 설정에서 복사한 JSON입니다. 예시 값 대신 실제 값을 넣으세요.
+
+```json
+{"apiKey":"<Firebase 웹 API 키>","authDomain":"atelier-fasion-tycoon.firebaseapp.com","projectId":"atelier-fasion-tycoon","appId":"<Firebase 웹 앱 ID>","googleEnabled":false}
+```
+
+Production에 적용하고, Preview 주소에서 로그인도 시험하려면 Preview에도 적용합니다. 이미 배포했다면 환경변수를 추가한 뒤 다시 배포해야 합니다. 배포 주소(예: `example.vercel.app`)를 Firebase Authentication의 **승인된 도메인**에 추가합니다. 이메일·비밀번호 제공자와 Firestore 규칙은 Firebase 프로젝트에서 설정한 값을 사용합니다.
+
+이 함수는 브라우저에 필요한 공개 Firebase 웹 구성값만 응답하며 `Cache-Control: no-store`를 설정합니다. 서비스 계정 키나 관리자 자격증명을 `FIREBASE_WEB_CONFIG`에 넣지 마세요. GitHub Actions 변수나 배포 웹훅 변수는 Vercel 실행 함수에 자동 전달되지 않으므로 Vercel 프로젝트 환경변수를 사용합니다.
