@@ -455,3 +455,17 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .room-world .piece.selected img{filter:drop-shadow(0 5px 2px #75425455) drop-shadow(0 0 7px #fff6df) drop-shadow(0 0 8px #f2769e);transition:filter .2s ease}
 .room-world .piece.selected .piece-label{background:#da718d;color:#fff;box-shadow:0 3px 10px #823e6980,0 0 0 2px #fff6e8;transform:translateX(-50%) translateY(-2px)}
 .room-world .piece.selected .piece-label::before{content:'✓';display:inline-block;margin-right:4px;font-weight:900}
+
+/* Loan management */
+.loan-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}
+.loan-summary>div{display:flex;flex-direction:column;gap:4px;padding:11px 12px;border:1px solid #eed1c6;border-radius:11px;background:#fff4e8}
+.loan-summary span{font-size:12px;color:#866873}
+.loan-summary strong{font-size:19px;color:#aa5675;font-variant-numeric:tabular-nums}
+.modal-card .loan-note{margin:10px 0 18px;font-size:12px;color:#7d6370}
+.loan-form{margin:14px 0}
+.loan-form label{display:block;margin-bottom:6px;font-size:13px;font-weight:800;color:#634857}
+.loan-form>div{display:flex;gap:8px}
+.loan-form input{flex:1;min-width:0;padding:11px;border:1px solid #d6b9b7;border-radius:9px;background:#fffefa;color:#533947;font:inherit;font-size:15px}
+.loan-form button,.loan-repay-all{padding:10px 13px;border:0;border-radius:9px;background:#c67189;color:#fff;font-size:13px;font-weight:800;white-space:nowrap}
+.loan-form button:disabled,.loan-repay-all:disabled{background:#ded0ce;color:#75676d;cursor:default}
+.loan-repay-all{width:100%;margin-top:3px;background:#82617b}

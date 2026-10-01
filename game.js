@@ -83,7 +83,7 @@
   const targets = ['20대 직장인','10대 학생','아웃도어 고객'];
   const initial = () => ({
     layoutVersion:3,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,localSave:false,
-    research:0,unlocks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[]
+    research:0,unlocks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
   try {
@@ -95,6 +95,10 @@
       state.history = Array.isArray(saved.history) ? saved.history : [];
       state.hired = Array.isArray(saved.hired) ? saved.hired : workers.filter(w => saved.placed.some(p => p.id===w.id)).map(w => w.id);
       state.ownedFurniture = Array.isArray(saved.ownedFurniture) ? saved.ownedFurniture : saved.placed.filter(p => furniture.some(f => f.id===p.id)).map(p => ({id:p.id,kind:p.id}));
+      state.loan = {
+        principal:Number.isFinite(saved.loan?.principal)?Math.max(0,saved.loan.principal):0,
+        interestDue:Number.isFinite(saved.loan?.interestDue)?Math.max(0,saved.loan.interestDue):0
+      };
       for(const id of state.hired) state.staff[id] = state.staff[id] || {level:1,xp:0};
       if(saved.layoutVersion!==3){
         const n=gridSizes[state.officeLevel-1],oldWidth=saved.layoutVersion===2?8:10,oldHeight=saved.layoutVersion===2?8:7;
@@ -126,6 +130,32 @@
   const occupied = (x,y,except) => state.placed.some(p => p.id !== except && p.x === x && p.y === y);
   const upgradePrice = level => 95 + (level-1)*45;
   const save = () => { if(state.localSave) localStorage.setItem('atelier-device-save',JSON.stringify(state)); };
+  const roundMoney = value => Math.round((value+Number.EPSILON)*10)/10;
+  const money = value => roundMoney(value).toLocaleString('ko-KR',{maximumFractionDigits:1});
+  const loanLimit = level => 60+(level-1)*40;
+  const loanRate = level => .08-(level-1)*.005;
+  const loanBalance = () => roundMoney(state.loan.principal+state.loan.interestDue);
+  const availableLoan = () => Math.max(0,Math.floor(roundMoney(loanLimit(state.companyLevel)-state.loan.principal)));
+  const borrowLoan = amount => {
+    if(!Number.isInteger(amount)||amount<1||amount>availableLoan())return false;
+    state.loan.principal=roundMoney(state.loan.principal+amount);
+    state.assets=roundMoney(state.assets+amount);
+    return true;
+  };
+  const repayLoan = amount => {
+    if(!Number.isFinite(amount)||amount<.1||Math.abs(roundMoney(amount)-amount)>1e-9||amount>loanBalance()||amount>state.assets)return false;
+    const interestPaid=Math.min(amount,state.loan.interestDue);
+    state.loan.interestDue=roundMoney(state.loan.interestDue-interestPaid);
+    state.loan.principal=roundMoney(Math.max(0,state.loan.principal-(amount-interestPaid)));
+    state.assets=roundMoney(state.assets-amount);
+    return true;
+  };
+  const accrueLoanInterest = () => {
+    if(!state.loan.principal)return 0;
+    const interest=roundMoney(state.loan.principal*loanRate(state.companyLevel));
+    state.loan.interestDue=roundMoney(state.loan.interestDue+interest);
+    return interest;
+  };
   const toast = message => {
     $('toast').textContent=message; $('toast').classList.add('show');
     clearTimeout(toastTimer); toastTimer=setTimeout(() => $('toast').classList.remove('show'),2800);
@@ -244,7 +274,7 @@
   };
   const render = () => {
     $('companyLevel').textContent=state.companyLevel;
-    $('assetValue').textContent='₩'+Math.round(state.assets).toLocaleString()+'M';
+    $('assetValue').textContent='₩'+money(state.assets)+'M';
     $('customerValue').textContent=state.customers.toLocaleString()+'명';
     $('officeTitle').textContent=offices[state.officeLevel-1];
     $('officeLevel').textContent='오피스 LV. '+state.officeLevel+' / 10';
@@ -294,6 +324,26 @@
   const showSaveInfo = () => {
     showModal('<span class="modal-kicker">PLAY DATA</span><h2 id="modalTitle">진행 내용 저장</h2><p>게스트 플레이는 새로고침하거나 앱을 닫으면 초기화됩니다. 아래 버튼으로 이 기기에만 저장할 수 있어요. 계정 로그인과 기기 간 동기화는 아직 구현되지 않았습니다.</p><button class="modal-primary" id="enableSave" type="button">'+(state.localSave?'지금 이 기기에 저장':'이 기기에 저장 시작')+'</button>');
     $('enableSave').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기의 브라우저에 진행 내용이 저장됩니다.');};
+  };
+  const showLoan = () => {
+    const limit=loanLimit(state.companyLevel),available=availableLoan(),balance=loanBalance();
+    const repayMax=roundMoney(Math.min(state.assets,balance));
+    showModal('<span class="modal-kicker">ATELIER FINANCE</span><h2 id="modalTitle">대출 관리</h2><p>회사 LV.'+state.companyLevel+' · 컬렉션을 출시할 때마다 남은 원금에 시즌 이자가 붙습니다. 미납 이자에는 이자가 붙지 않아요.</p><div class="loan-summary"><div><span>원금 한도</span><strong>₩'+money(limit)+'M</strong></div><div><span>현재 이자율</span><strong>'+ (loanRate(state.companyLevel)*100).toFixed(1)+'%</strong></div><div><span>남은 원금</span><strong>₩'+money(state.loan.principal)+'M</strong></div><div><span>미납 이자</span><strong>₩'+money(state.loan.interestDue)+'M</strong></div><div><span>총 상환액</span><strong>₩'+money(balance)+'M</strong></div><div><span>추가 대출 가능</span><strong>₩'+money(available)+'M</strong></div></div><p class="loan-note">회사 레벨마다 한도 +₩40M, 이자율 −0.5%p · 중간 상환은 이자부터 차감됩니다. 다음 출시에는 현재 회사 레벨의 이자율이 적용돼요.</p><form id="borrowForm" class="loan-form"><label for="borrowAmount">대출 금액 (₩M)</label><div><input id="borrowAmount" type="number" min="1" max="'+available+'" step="1" inputmode="numeric" required placeholder="1 ~ '+available+'" '+(available?'':'disabled')+'><button type="submit" '+(available?'':'disabled')+'>대출하기</button></div></form><form id="repayForm" class="loan-form"><label for="repayAmount">중간 상환 금액 (₩M)</label><div><input id="repayAmount" type="number" min="0.1" max="'+repayMax+'" step="0.1" inputmode="decimal" required placeholder="최대 '+money(repayMax)+'" '+(repayMax>=.1?'':'disabled')+'><button type="submit" '+(repayMax>=.1?'':'disabled')+'>일부 상환</button></div></form><button id="repayAll" class="loan-repay-all" type="button" '+(balance>0&&state.assets>=balance?'':'disabled')+'>전액 상환 · ₩'+money(balance)+'M</button>');
+    $('borrowForm').onsubmit=event=>{
+      event.preventDefault();const amount=Number($('borrowAmount').value);
+      if(!borrowLoan(amount)){toast('대출 가능 금액을 확인해 주세요.');return;}
+      save();render();showLoan();toast('₩'+money(amount)+'M 대출 완료');
+    };
+    $('repayForm').onsubmit=event=>{
+      event.preventDefault();const amount=Number($('repayAmount').value);
+      if(!repayLoan(amount)){toast('상환액과 현재 자산을 확인해 주세요.');return;}
+      save();render();showLoan();toast('₩'+money(amount)+'M 상환 완료');
+    };
+    $('repayAll').onclick=()=>{
+      const amount=loanBalance();
+      if(!repayLoan(amount)){toast('상환 가능한 자산이 부족해요.');return;}
+      save();render();showLoan();toast('대출 전액 상환 완료!');
+    };
   };
   const availableItems = () => baseCategories.concat(has('hoodie')?['후드티']:[],has('bag')?['가방']:[]);
   const availableMaterials = () => ['면'].concat(has('linen')?['리넨']:[],has('recycled')?['재생 원단']:[]);
@@ -433,9 +483,10 @@
     setTimeout(()=>{if(messageTimer)clearInterval(messageTimer);isProducing=false;launch(choices,assigned,outcome);},reduced?250:2250);
   };
   const changeCard = (label,delta,previous,unit) => {
+    if(label==='자산')delta=roundMoney(delta);
     const direction=delta>0?'up':delta<0?'down':'flat';
     const sign=delta>0?'+':'';
-    const amount=(label==='자산'?'₩':'')+sign+delta+unit;
+    const amount=(label==='자산'?'₩':'')+sign+(label==='자산'?money(delta):delta)+unit;
     const rate=previous===0?(delta===0?'변화 없음':'첫 변동'):(sign+(delta/previous*100).toFixed(1)+'%');
     const arrow=direction==='up'?'↑':direction==='down'?'↓':'→';
     return '<div class="change-card '+direction+'" aria-label="'+label+' '+amount+', '+rate+'"><span>'+label+'</span><strong><em aria-hidden="true">'+arrow+'</em>'+amount+'</strong><small>'+rate+'</small></div>';
@@ -454,9 +505,10 @@
     const revenue=Math.round(score*(success?1.8:1.12)+state.companyLevel*4);
     const gained=Math.round((score-48)*3.7);
     const points=success?3:2;
-    state.assets+=revenue-38;
+    state.assets=roundMoney(state.assets+revenue-38);
     state.customers=Math.max(0,state.customers+gained);
     state.research+=points;
+    const chargedInterest=accrueLoanInterest();
     const xpChanges=[];
     for(const w of hiredWorkers()) if(assigned[w.id]){
       const member=state.staff[w.id],before=member.level;
@@ -477,7 +529,8 @@
     state.history=state.history.slice(0,8);save();render();
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
     const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.leveled?'+1 XP · LV.'+w.level+' 달성! · 기본값에 비례해 능력 상승':w.level===10?'최대 레벨':'+1 XP · '+w.xp+'/'+(w.level*2))+'</span></div>').join('')+'</div>';
-    showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div><div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    const loanReport=chargedInterest?'<div class="report-line">이번 시즌 대출 이자 <strong>+₩'+money(chargedInterest)+'M · 총 상환액 ₩'+money(loanBalance())+'M</strong></div>':'';
+    showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
   const showResearch = () => {
@@ -600,6 +653,7 @@
   document.addEventListener('click',event=>{if(!menu.contains(event.target)&&event.target!==toggle)setMenu(false);});
   $('menuHire').onclick=()=>{setMenu(false);showHire(0);};
   $('menuFurniture').onclick=()=>{setMenu(false);showFurniture(0);};
+  $('menuLoan').onclick=()=>{setMenu(false);showLoan();};
   $('menuSave').onclick=()=>{setMenu(false);showSaveInfo();};
   $('startForm').addEventListener('submit',event=>{
     event.preventDefault();
