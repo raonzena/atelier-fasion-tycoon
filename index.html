@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#fff1d4">
   <title>ATELIER — 의류 회사 타이쿤</title>
+  <link rel="preload" as="image" href="./assets/office-pastel.webp" fetchpriority="high">
   <link rel="stylesheet" href="./style.css">
   <link rel="icon" type="image/svg+xml" href="./assets/paw-icon.svg">
 </head>
@@ -62,4 +63,9 @@
 <div class="modal-layer" id="modalLayer" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="modal-close" id="modalClose" aria-label="닫기" type="button">×</button><div id="modalContent"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="./game.js" defer></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  }
+</script>
 </body></html>

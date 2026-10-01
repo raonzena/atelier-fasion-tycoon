@@ -30,6 +30,24 @@
   ];
   const workers = items.filter(i => i.type === 'worker');
   const furniture = items.filter(i => i.type === 'furniture');
+  const skeletonImage = img => {
+    img.setAttribute('data-skeleton','');
+    const finish = () => img.classList.add('image-ready');
+    img.addEventListener('load',finish,{once:true});
+    img.addEventListener('error',finish,{once:true});
+    return img;
+  };
+  const warmArtwork = () => {
+    if (typeof Image === 'undefined') return;
+    const paths = ['office-mid.webp','office-high.webp','cats-disappointed.webp','production-studio.webp'];
+    for (const name of paths) { const preview = new Image(); preview.src = './assets/' + name; }
+  };
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('load', () => {
+      if ('requestIdleCallback' in window) window.requestIdleCallback(warmArtwork, {timeout:5000});
+      else setTimeout(warmArtwork, 1200);
+    }, {once:true});
+  }
   const employeeCap = [1,2,3,4,5,6,7,8,9,10];
   const furnitureCap = [2,3,4,5,6,7,8,9,10,11];
   const furniturePrice = {designDesk:18,sewingDesk:22,rack:16,photo:30,moodboard:26,lounge:36};
@@ -37,10 +55,18 @@
   const gridSizes=[3,4,4,5,5,6,6,7,7,8];
   const bounds=gridSizes.map(n=>[0,n-1,0,n-1]);
   const gridSize=()=>gridSizes[state.officeLevel-1];
-  const FLOOR_X=43, FLOOR_Y=31, FLOOR_TOP=32;
+  // The painted room is slightly asymmetric: the left and right floor edges
+  // have different slopes. Keep drawing and pointer hit-testing on one basis.
+  const FLOOR_ORIGIN={left:54,top:28};
+  const FLOOR_RIGHT={left:38,top:29};
+  const FLOOR_LEFT={left:-44,top:29.5};
+  const floorPoint=(u,v)=>({
+    left:FLOOR_ORIGIN.left+FLOOR_RIGHT.left*u+FLOOR_LEFT.left*v,
+    top:FLOOR_ORIGIN.top+FLOOR_RIGHT.top*u+FLOOR_LEFT.top*v
+  });
   const cellCenter = (x,y) => {
     const n=gridSize(),u=(x+.5)/n,v=(y+.5)/n;
-    return {left:50+FLOOR_X*(u-v),top:FLOOR_TOP+FLOOR_Y*(u+v)};
+    return floorPoint(u,v);
   };
   const trends = [
     {season:'봄',item:'셔츠',style:'미니멀',target:'20대 직장인'},
@@ -86,7 +112,7 @@
       }
     }
   } catch {}
-  let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false;
+  let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTile=null;
   const definition = id => items.find(i => i.id === id) || furniture.find(i => state.ownedFurniture.some(o => o.id === id && o.kind === i.id));
   const itemName = id => {const d=definition(id);return d ? d.name : '알 수 없는 물건';};
   const hiredWorkers = () => workers.filter(w => state.hired.includes(w.id));
@@ -107,10 +133,16 @@
   const setHint = message => { $('placementHint').textContent=message; };
   const positionFromPointer = event => {
     const r=$('floor').getBoundingClientRect();
-    const dx=(event.clientX-r.left)/r.width-.5;
-    const dy=(event.clientY-r.top)/r.height-FLOOR_TOP/100;
-    const difference=dx/(FLOOR_X/100),sum=dy/(FLOOR_Y/100);
-    return {x:Math.floor((sum+difference)*gridSize()/2),y:Math.floor((sum-difference)*gridSize()/2)};
+    const dx=(event.clientX-r.left)/r.width*100-FLOOR_ORIGIN.left;
+    const dy=(event.clientY-r.top)/r.height*100-FLOOR_ORIGIN.top;
+    const det=FLOOR_RIGHT.left*FLOOR_LEFT.top-FLOOR_LEFT.left*FLOOR_RIGHT.top;
+    const u=(dx*FLOOR_LEFT.top-FLOOR_LEFT.left*dy)/det;
+    const v=(FLOOR_RIGHT.left*dy-FLOOR_RIGHT.top*dx)/det;
+    return {x:Math.floor(u*gridSize()),y:Math.floor(v*gridSize())};
+  };
+  const clearDragTarget=()=>{
+    if(dragTargetTile)dragTargetTile.classList.remove('drag-target','drag-invalid');
+    dragTargetTile=null;
   };
   const move = (id,x,y) => {
     if(!isUnlocked(x,y)){toast('잠긴 공간이에요. 오피스를 확장하면 열립니다.');return false;}
@@ -122,23 +154,25 @@
     return true;
   };
   const renderFloor = () => {
-    const floor=$('floor');floor.replaceChildren();
+    const floor=$('floor'),tileByCell=new Map();
+    clearDragTarget();floor.replaceChildren();
     for(let y=0;y<gridSize();y++) for(let x=0;x<gridSize();x++){
       const tile=document.createElement('button');tile.type='button';
       tile.className='tile '+(isUnlocked(x,y)?'available':'locked');
       tile.setAttribute('role','gridcell');
       tile.setAttribute('aria-label',(x+1)+'열 '+(y+1)+'행 '+(isUnlocked(x,y)?'배치 가능':'잠김'));
-      const center=cellCenter(x,y);
-      tile.style.left=(center.left-FLOOR_X/gridSize())+'%';
-      tile.style.top=(center.top-FLOOR_Y/gridSize())+'%';
-      tile.style.width=(FLOOR_X*2/gridSize())+'%';
-      tile.style.height=(FLOOR_Y*2/gridSize())+'%';
+      const n=gridSize(),top=floorPoint(x/n,y/n),right=floorPoint((x+1)/n,y/n);
+      const bottom=floorPoint((x+1)/n,(y+1)/n),left=floorPoint(x/n,(y+1)/n);
+      tile.style.left=left.left+'%';
+      tile.style.top=top.top+'%';
+      tile.style.width=(right.left-left.left)+'%';
+      tile.style.height=(bottom.top-top.top)+'%';
       tile.addEventListener('click',()=>{
         if(!editMode){setHint('왼쪽 메뉴의 배치 수정을 눌러 사무실을 꾸며보세요.');return;}
         if(!selected){toast('먼저 아래에서 가구나 직원을 선택하세요.');return;}
         move(selected,x,y);
       });
-      floor.append(tile);
+      tileByCell.set(x+','+y,tile);floor.append(tile);
     }
     state.placed.forEach(p=>{
       const d=definition(p.id);if(!d)return;
@@ -149,7 +183,7 @@
       button.style.left=center.left+'%';
       button.style.top=center.top+'%';
       button.style.zIndex=5+p.x+p.y;
-      const img=document.createElement('img');img.src='./assets/'+d.sprite+'.webp';img.alt='';img.draggable=false;
+      const img=skeletonImage(document.createElement('img'));img.src='./assets/'+d.sprite+'.webp';img.alt='';img.draggable=false;
       const label=document.createElement('span');label.className='piece-label';label.textContent=d.name;
       button.append(img,label);
       let dragStart=null, dragged=false;
@@ -161,13 +195,21 @@
       button.addEventListener('pointermove',event=>{
         if(!dragStart)return;
         const dx=event.clientX-dragStart.x,dy=event.clientY-dragStart.y;
-        if(Math.hypot(dx,dy)>5)button.style.transform='translate(-50%,-50%) translate('+dx+'px,'+dy+'px)';
+        if(Math.hypot(dx,dy)>5){
+          button.style.transform='translate(-50%,-50%) translate('+dx+'px,'+dy+'px)';
+          const cell=positionFromPointer(event),target=tileByCell.get(cell.x+','+cell.y);
+          if(target!==dragTargetTile){clearDragTarget();dragTargetTile=target||null;}
+          if(dragTargetTile){
+            dragTargetTile.classList.add('drag-target');
+            dragTargetTile.classList.toggle('drag-invalid',!isUnlocked(cell.x,cell.y)||occupied(cell.x,cell.y,p.id));
+          }
+        }
       });
-      button.addEventListener('pointercancel',()=>{dragStart=null;button.style.transform='';});
+      button.addEventListener('pointercancel',()=>{dragStart=null;button.style.transform='';clearDragTarget();});
       button.addEventListener('pointerup',event=>{
         if(!dragStart)return;
         const distance=Math.hypot(event.clientX-dragStart.x,event.clientY-dragStart.y);
-        dragStart=null;button.style.transform='';
+        dragStart=null;button.style.transform='';clearDragTarget();
         if(distance>9){
           const pos=positionFromPointer(event);
           dragged=true;move(p.id,pos.x,pos.y);
@@ -189,7 +231,7 @@
       const button=document.createElement('button');button.type='button';
       button.className='inventory-item'+(selected===d.id?' selected':'');
       button.setAttribute('aria-label',d.name+' '+(placed(d.id)?'배치됨, 이동 선택':'배치하기'));
-      const img=document.createElement('img');img.src='./assets/'+d.sprite+'.webp';img.alt='';
+      const img=skeletonImage(document.createElement('img'));img.src='./assets/'+d.sprite+'.webp';img.alt='';
       const name=document.createElement('span');name.textContent=d.name;button.append(img,name);
       if(placed(d.id)){const badge=document.createElement('small');badge.textContent='배치됨';button.append(badge);}
       button.addEventListener('click',()=>{
@@ -211,8 +253,20 @@
     $('season').textContent=trend.season;
     $('trend').textContent='트렌드 · '+trend.style+' '+trend.item;
     $('roomWorld').style.width=(70+(state.officeLevel-1)*30/9)+'%';
-    $('roomBackdrop').style.backgroundImage="url('./assets/"+(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+".webp')";
-    $('roomBackdrop').style.filter='saturate('+(1+state.officeLevel*.014)+') brightness('+(1+state.officeLevel*.006)+')';
+    const backdrop=$('roomBackdrop');
+    const artwork=(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+'.webp';
+    if(backdrop.dataset.artwork!==artwork){
+      backdrop.dataset.artwork=artwork;
+      backdrop.classList.add('image-loading');
+      backdrop.style.backgroundImage="url('./assets/"+artwork+"')";
+      if(typeof Image!=='undefined'){
+        const loader=new Image();
+        loader.onload=loader.onerror=()=>{if(backdrop.dataset.artwork===artwork)backdrop.classList.remove('image-loading');};
+        loader.src='./assets/'+artwork;
+        if(loader.complete&&loader.naturalWidth>0)backdrop.classList.remove('image-loading');
+      } else backdrop.classList.remove('image-loading');
+    }
+    backdrop.style.filter='saturate('+(1+state.officeLevel*.014)+') brightness('+(1+state.officeLevel*.006)+')';
     $('companyNameBrand').textContent=state.companyName||'ATELIER';
     $('scene').classList.toggle('editing',editMode);
     $('inventory').hidden=!editMode;
@@ -227,17 +281,28 @@
     renderFloor();if(editMode)renderInventory();
   };
   const closeModal = () => {if(isProducing)return;$('modalLayer').hidden=true;$('modalContent').replaceChildren();};
-  const showModal = html => {$('modalContent').innerHTML=html;$('modalLayer').hidden=false;$('modalClose').hidden=isProducing;if(!isProducing)$('modalClose').focus();};
+  const showModal = html => {
+    $('modalContent').innerHTML=html;
+    $('modalContent').querySelectorAll('img[data-skeleton]').forEach(img=>{
+      const finish=()=>img.classList.add('image-ready');
+      img.addEventListener('load',finish,{once:true});
+      img.addEventListener('error',finish,{once:true});
+      if(img.complete)finish();
+    });
+    $('modalLayer').hidden=false;$('modalClose').hidden=isProducing;if(!isProducing)$('modalClose').focus();
+  };
   const showSaveInfo = () => {
     showModal('<span class="modal-kicker">PLAY DATA</span><h2 id="modalTitle">진행 내용 저장</h2><p>게스트 플레이는 새로고침하거나 앱을 닫으면 초기화됩니다. 아래 버튼으로 이 기기에만 저장할 수 있어요. 계정 로그인과 기기 간 동기화는 아직 구현되지 않았습니다.</p><button class="modal-primary" id="enableSave" type="button">'+(state.localSave?'지금 이 기기에 저장':'이 기기에 저장 시작')+'</button>');
     $('enableSave').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기의 브라우저에 진행 내용이 저장됩니다.');};
   };
   const availableItems = () => baseCategories.concat(has('hoodie')?['후드티']:[],has('bag')?['가방']:[]);
   const availableMaterials = () => ['면'].concat(has('linen')?['리넨']:[],has('recycled')?['재생 원단']:[]);
+  const levelBonus = w => Math.max(0,(state.staff[w.id]?.level||1)-1);
+  const effectiveSkill = w => w.skill+levelBonus(w);
   const successChance = (choices,assigned) => {
     const trend=trends[state.releases%trends.length];
     const matches=Number(choices.target===trend.target)+Number(choices.item===trend.item)+Number(choices.style===trend.style);
-    const skill=hiredWorkers().filter(w=>assigned[w.id]).reduce((sum,w)=>sum+state.staff[w.id].level*2+Math.round(w.skill/2),0);
+    const skill=hiredWorkers().filter(w=>assigned[w.id]).reduce((sum,w)=>sum+state.staff[w.id].level*2+Math.round(effectiveSkill(w)/2),0);
     const material=choices.material==='리넨'&&trend.season==='여름'||choices.material==='재생 원단'&&choices.style==='아웃도어'?6:0;
     return [Math.max(10,Math.min(95,32+matches*10+skill+material)),matches];
   };
@@ -268,8 +333,8 @@
       const label=document.createElement('label');label.className='staff-choice';
       const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;
       checkbox.onchange=()=>{assigned[w.id]=checkbox.checked;update();};
-      const img=document.createElement('img');img.src='./assets/'+w.sprite+'.webp';img.alt='';
-      const text=document.createElement('span');text.textContent=w.name+' · '+w.role+' '+w.skill+' · LV.'+state.staff[w.id].level;
+      const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
+      const text=document.createElement('span');text.textContent=w.name+' · '+w.role+' · 능력 '+effectiveSkill(w)+' (기본 '+w.skill+' +'+levelBonus(w)+') · LV.'+state.staff[w.id].level;
       label.append(checkbox,img,text);$('staffChoices').append(label);
     });
     update();$('confirmLaunch').onclick=()=>beginProduction(choices,assigned);
@@ -278,23 +343,24 @@
     if(isProducing)return;
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
     const [chance]=successChance(choices,assigned);
-    const team=hiredWorkers().filter(w=>assigned[w.id]).slice(0,5);
+    const success=Math.random()*100<chance;
+    const target=success?100:chance;
     isProducing=true;
-    showModal('<span class="modal-kicker">COLLECTION IN PROGRESS</span><h2 id="modalTitle" tabindex="-1">고양이 팀이 제작 중이에요</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>패턴을 그리고, 재봉하고, 촬영을 준비하고 있어요.</p><div class="production-team" aria-label="제작에 참여한 직원">'+team.map((w,i)=>'<div class="production-worker" style="--delay:'+i*-.28+'s"><img src="./assets/'+w.sprite+'.webp" alt="'+w.name+'가 '+w.role+' 작업을 하는 모습"><span>'+w.name+'</span></div>').join('')+'</div></div>');
+    showModal('<span class="modal-kicker">COLLECTION IN PROGRESS</span><h2 id="modalTitle" tabindex="-1">고양이 팀이 제작 중이에요</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>제작 진행도 · 예상 성공률 '+chance+'%</p><div class="production-studio" role="img" aria-label="고양이들이 패션 사무실에서 디자인하고 재봉하고 의상을 정리하는 장면"><img data-skeleton src="./assets/production-studio.webp" alt="" decoding="async"></div></div>');
     $('modalTitle').focus();
     const reduced=typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(reduced){$('productionPercent').textContent=chance+'%';$('productionFill').style.width=chance+'%';}
+    if(reduced){$('productionPercent').textContent=target+'%';$('productionFill').style.width=target+'%';}
     else {
       const start=performance.now(),duration=1600;
       const tick=now=>{
         if(!isProducing)return;
-        const progress=Math.min(1,(now-start)/duration),value=Math.round(chance*(1-Math.pow(1-progress,3)));
+        const progress=Math.min(1,(now-start)/duration),value=Math.round(target*(1-Math.pow(1-progress,3)));
         $('productionPercent').textContent=value+'%';$('productionFill').style.width=value+'%';
         if(progress<1)requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     }
-    setTimeout(()=>{isProducing=false;launch(choices,assigned);},reduced?250:2250);
+    setTimeout(()=>{isProducing=false;launch(choices,assigned,success);},reduced?250:2250);
   };
   const changeCard = (label,delta,previous,unit) => {
     const direction=delta>0?'up':delta<0?'down':'flat';
@@ -308,12 +374,12 @@
     [-112,-64],[-85,-109],[-34,-116],[21,-108],[81,-103],[116,-58],
     [106,29],[69,83],[14,105],[-48,94],[-101,51],[-122,-8]
   ].map(([x,y],i)=>'<i style="--x:'+x+'px;--y:'+y+'px;--hue:'+[344,35,49,178][i%4]+'"></i>').join('')+'</div>';
-  const launch = (choices,assigned) => {
+  const launch = (choices,assigned,resolvedSuccess) => {
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
     const previous={assets:state.assets,customers:state.customers,research:state.research};
     const trend=trends[state.releases%trends.length];
     const [chance,matches]=successChance(choices,assigned);
-    const success=Math.random()*100<chance;
+    const success=typeof resolvedSuccess==='boolean'?resolvedSuccess:Math.random()*100<chance;
     const score=Math.max(20,Math.min(100,chance+(success?Math.floor(Math.random()*15):-(15+Math.floor(Math.random()*18)))));
     const revenue=Math.round(score*(success?1.8:1.12)+state.companyLevel*4);
     const gained=Math.round((score-48)*3.7);
@@ -321,9 +387,14 @@
     state.assets+=revenue-38;
     state.customers=Math.max(0,state.customers+gained);
     state.research+=points;
+    const xpChanges=[];
     for(const w of hiredWorkers()) if(assigned[w.id]){
-      const member=state.staff[w.id];member.xp++;
-      if(member.xp>=member.level*2 && member.level<10){member.xp=0;member.level++;}
+      const member=state.staff[w.id],before=member.level;
+      if(member.level<10){
+        member.xp++;
+        if(member.xp>=member.level*2){member.xp=0;member.level++;}
+      }
+      xpChanges.push({name:w.name,level:member.level,xp:member.xp,leveled:member.level>before,skill:effectiveSkill(w)});
     }
     state.releases++;
     state.companyLevel=Math.min(10,1+Math.floor(state.releases/2));
@@ -335,7 +406,8 @@
     state.history.unshift({name:choices.style+' '+choices.item,season:trend.season,score,revenue,review});
     state.history=state.history.slice(0,8);save();render();
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
-    showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">성공 확률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div><div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.leveled?'+1 XP · LV.'+w.level+' 달성! · 능력 '+w.skill:w.level===10?'최대 레벨 · 능력 '+w.skill:'+1 XP · '+w.xp+'/'+(w.level*2)+' · 능력 '+w.skill)+'</span></div>').join('')+'</div>';
+    showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">성공 확률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div><div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
   const showResearch = () => {
@@ -348,7 +420,7 @@
       const row=document.createElement('div');row.className='report-line';
       row.textContent=w.name;
       const strong=document.createElement('strong');
-      const s=state.staff[w.id];strong.textContent='LV.'+s.level+' · 경험 '+s.xp+'/'+(s.level*2);
+      const s=state.staff[w.id];strong.textContent='LV.'+s.level+' · 능력 '+effectiveSkill(w)+' (+'+levelBonus(w)+') · 경험 '+s.xp+'/'+(s.level*2);
       row.append(strong);$('teamRows').append(row);
     });
     projects.forEach(project=>{
@@ -376,7 +448,7 @@
   const showWorkerProfile = id => {
     const w=definition(id),member=state.staff[id];
     if(!w||!member)return;
-    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><div class="report-line">기본 능력치 <strong>'+w.skill+'</strong></div><div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><p>컬렉션 제작에 배정하면 경험치를 얻고 성공률에 기여합니다.</p>');
+    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><div class="report-line">기본 능력치 <strong>'+w.skill+'</strong></div><div class="report-line">레벨 보너스 <strong>+'+levelBonus(w)+'</strong></div><div class="report-line">현재 능력치 <strong>'+effectiveSkill(w)+'</strong></div><div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><p>레벨이 오를 때마다 능력치가 1씩 올라가고 제작 성공률에 반영됩니다.</p>');
   };
   const pageSize=5;
   const showPager = (page,count,onPage) => {
@@ -403,7 +475,7 @@
     showModal('<span class="modal-kicker">STAFF RECRUITMENT</span><h2 id="modalTitle">직원 고용</h2><p>오피스 LV.'+state.officeLevel+' · 고용 '+state.hired.length+'/'+employeeCap[state.officeLevel-1]+'명. 채용한 고양이는 사무실에 배치되고 제작에 참여할 수 있어요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="직원 목록 페이지"></nav>');
     roster.slice(page*pageSize,(page+1)*pageSize).forEach(w=>{
       const row=document.createElement('div');row.className='shop-row';
-      const img=document.createElement('img');img.src='./assets/'+w.sprite+'.webp';img.alt='';img.loading='lazy';img.decoding='async';img.width=72;img.height=72;
+      const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';img.loading='eager';img.decoding='async';img.width=72;img.height=72;
       const body=document.createElement('div');body.className='shop-description';
       const heading=document.createElement('strong');heading.textContent=w.name+' · '+w.role;
       const detail=document.createElement('small');detail.textContent='능력 '+w.skill+' · 오피스 LV.'+w.level+'부터';
@@ -427,7 +499,7 @@
     showModal('<span class="modal-kicker">FURNITURE SHOP</span><h2 id="modalTitle">가구 구매</h2><p>오피스 LV.'+state.officeLevel+' · 보유 가구 '+state.ownedFurniture.length+'/'+furnitureCap[state.officeLevel-1]+'개. 구매한 가구는 배치 수정에서 옮길 수 있어요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="가구 목록 페이지"></nav>');
     furniture.slice(page*pageSize,(page+1)*pageSize).forEach(f=>{
       const row=document.createElement('div');row.className='shop-row';
-      const img=document.createElement('img');img.src='./assets/'+f.sprite+'.webp';img.alt='';img.loading='lazy';img.decoding='async';img.width=72;img.height=72;
+      const img=skeletonImage(document.createElement('img'));img.src='./assets/'+f.sprite+'.webp';img.alt='';img.loading='eager';img.decoding='async';img.width=72;img.height=72;
       const body=document.createElement('div');body.className='shop-description';
       const heading=document.createElement('strong');heading.textContent=f.name;
       const detail=document.createElement('small');detail.textContent='오피스 LV.'+f.level+'부터 · 배치 보너스 없음';
@@ -461,7 +533,11 @@
     event.preventDefault();
     const name=$('companyNameInput').value.trim();
     if(!name)return;
+    if(document.activeElement && document.activeElement.blur)document.activeElement.blur();
     state.companyName=name.slice(0,20);$('startLayer').hidden=true;save();render();
+    const resetStartScroll=()=>{if(typeof window.scrollTo==='function')window.scrollTo(0,0);};
+    resetStartScroll();
+    setTimeout(resetStartScroll,550);
     toast(state.companyName+' 설립 완료! 직원 고용부터 시작해 보세요.');
   });
   $('startLayer').hidden=Boolean(state.companyName);
