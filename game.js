@@ -8,25 +8,25 @@
     {id:'photo',name:'촬영 공간',sprite:'prop-3',level:3,type:'furniture'},
     {id:'moodboard',name:'트렌드 보드',sprite:'prop-4',level:5,type:'furniture'},
     {id:'lounge',name:'라운지',sprite:'prop-5',level:7,type:'furniture'},
-    {id:'yuna',name:'유나',sprite:'cat-0',level:1,type:'worker',role:'디자인',skill:8,cost:24},
-    {id:'minho',name:'민호',sprite:'cat-1',level:1,type:'worker',role:'생산',skill:7,cost:26},
-    {id:'seoyeon',name:'서연',sprite:'cat-2',level:1,type:'worker',role:'마케팅',skill:7,cost:28},
-    {id:'nabi',name:'나비',sprite:'cat-0',level:2,type:'worker',role:'디자인',skill:6,cost:30},
-    {id:'duri',name:'두리',sprite:'cat-1',level:3,type:'worker',role:'생산',skill:8,cost:32},
-    {id:'momo',name:'모모',sprite:'cat-2',level:4,type:'worker',role:'마케팅',skill:8,cost:34},
-    {id:'bomi',name:'보미',sprite:'cat-0',level:5,type:'worker',role:'디자인',skill:9,cost:36},
-    {id:'toto',name:'토토',sprite:'cat-1',level:6,type:'worker',role:'생산',skill:9,cost:38},
-    {id:'hari',name:'하리',sprite:'cat-2',level:7,type:'worker',role:'마케팅',skill:9,cost:40},
-    {id:'lulu',name:'루루',sprite:'cat-0',level:8,type:'worker',role:'디자인',skill:10,cost:42},
-    {id:'raon',name:'라온',sprite:'cat-design-black',level:2,type:'worker',role:'디자인',skill:8,cost:30},
-    {id:'dot',name:'도트',sprite:'cat-design-spotted',level:3,type:'worker',role:'디자인',skill:9,cost:34},
-    {id:'berry',name:'베리',sprite:'cat-design-blue',level:5,type:'worker',role:'디자인',skill:10,cost:40},
-    {id:'tani',name:'탄이',sprite:'cat-production-tuxedo',level:2,type:'worker',role:'생산',skill:8,cost:31},
-    {id:'somi',name:'소미',sprite:'cat-production-siamese',level:4,type:'worker',role:'생산',skill:9,cost:35},
-    {id:'coco',name:'코코',sprite:'cat-production-calico',level:6,type:'worker',role:'생산',skill:10,cost:42},
-    {id:'bambi',name:'밤비',sprite:'cat-marketing-black',level:2,type:'worker',role:'마케팅',skill:8,cost:30},
-    {id:'euni',name:'은이',sprite:'cat-marketing-tabby',level:4,type:'worker',role:'마케팅',skill:9,cost:36},
-    {id:'gureum',name:'구름',sprite:'cat-marketing-ginger',level:6,type:'worker',role:'마케팅',skill:10,cost:42}
+    {id:'yuna',name:'유나',sprite:'cat-0',level:1,type:'worker',role:'디자인',cost:24},
+    {id:'minho',name:'민호',sprite:'cat-1',level:1,type:'worker',role:'생산',cost:26},
+    {id:'seoyeon',name:'서연',sprite:'cat-2',level:1,type:'worker',role:'마케팅',cost:28},
+    {id:'nabi',name:'나비',sprite:'cat-0',level:2,type:'worker',role:'디자인',cost:30},
+    {id:'duri',name:'두리',sprite:'cat-1',level:3,type:'worker',role:'생산',cost:32},
+    {id:'momo',name:'모모',sprite:'cat-2',level:4,type:'worker',role:'마케팅',cost:34},
+    {id:'bomi',name:'보미',sprite:'cat-0',level:5,type:'worker',role:'디자인',cost:36},
+    {id:'toto',name:'토토',sprite:'cat-1',level:6,type:'worker',role:'생산',cost:38},
+    {id:'hari',name:'하리',sprite:'cat-2',level:7,type:'worker',role:'마케팅',cost:40},
+    {id:'lulu',name:'루루',sprite:'cat-0',level:8,type:'worker',role:'디자인',cost:42},
+    {id:'raon',name:'라온',sprite:'cat-design-black',level:2,type:'worker',role:'디자인',cost:30},
+    {id:'dot',name:'도트',sprite:'cat-design-spotted',level:3,type:'worker',role:'디자인',cost:34},
+    {id:'berry',name:'베리',sprite:'cat-design-blue',level:9,type:'worker',role:'디자인',cost:58},
+    {id:'tani',name:'탄이',sprite:'cat-production-tuxedo',level:2,type:'worker',role:'생산',cost:31},
+    {id:'somi',name:'소미',sprite:'cat-production-siamese',level:4,type:'worker',role:'생산',cost:35},
+    {id:'coco',name:'코코',sprite:'cat-production-calico',level:10,type:'worker',role:'생산',cost:64},
+    {id:'bambi',name:'밤비',sprite:'cat-marketing-black',level:2,type:'worker',role:'마케팅',cost:30},
+    {id:'euni',name:'은이',sprite:'cat-marketing-tabby',level:4,type:'worker',role:'마케팅',cost:36},
+    {id:'gureum',name:'구름',sprite:'cat-marketing-ginger',level:6,type:'worker',role:'마케팅',cost:42}
   ];
   const workers = items.filter(i => i.type === 'worker');
   const furniture = items.filter(i => i.type === 'furniture');
@@ -304,7 +304,8 @@
     '생산':{design:-2,sewing:2,trend:-2,efficiency:1},
     '마케팅':{design:0,sewing:-3,trend:2,efficiency:-1}
   };
-  const baseStats = w => Object.fromEntries(statLabels.map(([key])=>[key,Math.max(1,w.skill+roleStats[w.role][key])]));
+  // Recruitment tiers rise at every office level; role offsets keep each specialty distinct.
+  const baseStats = w => Object.fromEntries(statLabels.map(([key])=>[key,Math.max(1,5+w.level+roleStats[w.role][key])]));
   const statGrowth = base => Math.max(1,Math.round(base/8));
   const employeeStats = w => {
     const base=baseStats(w),bonus=levelBonus(w);
