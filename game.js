@@ -354,8 +354,9 @@
     $('openAccount').onclick=()=>showAccount();
     $('enableSave').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기의 브라우저에 진행 내용이 저장됩니다.');};
   };
-  const showAccount = (mode='login') => {
+  const showAccount = async (mode='login') => {
     const cloud=window.atelierCloud;
+    if(cloud?.ready)await cloud.ready();
     if(!cloud?.isConfigured()){
       showModal('<span class="modal-kicker">ATELIER ACCOUNT</span><h2 id="modalTitle">계정 저장 준비 중</h2><p>Firebase 프로젝트 연결을 마치면 로그인과 기기 간 저장을 사용할 수 있어요. 지금은 기기 저장을 사용할 수 있습니다.</p><button class="modal-primary" id="localInstead" type="button">기기 저장하기</button>');
       $('localInstead').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기에 저장했어요.');};

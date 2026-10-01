@@ -1,6 +1,6 @@
 # ATELIER — 패션 회사 타이쿤
 
-웹에서 바로 플레이하는 패션 회사 경영 게임입니다. GitHub 저장소에는 정적 파일이 루트에, Sites 작업 폴더에는 dist/에 있습니다.
+웹에서 바로 플레이하는 패션 회사 경영 게임입니다. Sites 작업 폴더에는 게임 정적 파일이 `dist/client/`, 배포용 Worker가 `dist/server/`에 있습니다. GitHub 저장소에는 게임 파일이 루트에 있습니다.
 
 ## 시작과 성장
 
@@ -29,12 +29,12 @@
 
 ## Firebase 연결
 
-1. `atelier-fasion-tycoon` 프로젝트의 웹 앱을 등록하고 Authentication의 **이메일/비밀번호**를 사용 설정했습니다. Google 제공자는 지원 이메일 공개 여부를 확인한 후 켜고 `dist/firebase-config.js`의 `googleEnabled`를 `true`로 바꿉니다.
+1. `atelier-fasion-tycoon` 프로젝트의 웹 앱을 등록하고 Authentication의 **이메일/비밀번호**를 사용 설정했습니다. Google 제공자는 지원 이메일 공개 여부를 확인한 후 켜고 Sites의 `FIREBASE_WEB_CONFIG` 런타임 값에서 `googleEnabled`를 `true`로 바꿉니다.
 2. Authentication의 **승인된 도메인**에 `atelier-fashion-tycoon.sulhwa-dev.chatgpt.site`를 추가했습니다. 로컬 시험용 `localhost`도 기본 등록돼 있습니다.
 3. 서울 리전의 Cloud Firestore 기본 데이터베이스를 생성하고 `firestore.rules` 내용을 Firestore **규칙** 탭에 게시했습니다.
-4. 웹 앱의 공개 Firebase 구성값(`apiKey`, `authDomain`, `projectId`, `appId`)을 `dist/firebase-config.js`에 연결했습니다. 서비스 계정 키는 넣지 않습니다.
+4. Firebase 웹 구성값은 저장소 파일에 두지 않습니다. Sites의 `FIREBASE_WEB_CONFIG` 런타임 값으로 보관하며 Worker의 `/api/firebase-config`가 브라우저에 필요한 공개 구성값만 전달합니다. 서비스 계정 키는 사용하지 않습니다.
 
-설정값이 없는 배포에서도 게스트 플레이와 기기 저장은 계속 작동합니다. 계정 저장은 연결이 끝나야 활성화됩니다. Firestore 경로는 `saves/{Firebase UID}`이며 로그인한 본인만 읽고 쓸 수 있도록 규칙을 제한합니다. 게임 규칙과 자산 계산은 여전히 클라이언트에서 실행하므로 순위표나 실제 결제 보상을 도입한다면 서버 측 검증이 별도로 필요합니다.
+설정값을 불러올 수 없는 경우에도 게스트 플레이와 기기 저장은 계속 작동합니다. Firebase 웹 구성값은 브라우저 SDK 작동에 필요한 공개 정보이므로 런타임 응답에는 표시됩니다. 실제 게임 데이터 접근 권한은 Firestore 규칙이 제한합니다. Firestore 경로는 `saves/{Firebase UID}`이며 로그인한 본인만 읽고 쓸 수 있도록 규칙을 제한합니다. 게임 규칙과 자산 계산은 여전히 클라이언트에서 실행하므로 순위표나 실제 결제 보상을 도입한다면 서버 측 검증이 별도로 필요합니다.
 
 모바일 회사명 입력 후에는 키보드를 닫고 화면 스크롤을 맨 위로 되돌려 사무실 상단에서 시작합니다.
 

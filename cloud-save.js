@@ -1,5 +1,5 @@
-const config = window.ATELIER_FIREBASE_CONFIG;
-const configured = Boolean(config?.apiKey && config?.authDomain && config?.projectId && config?.appId);
+let config = null;
+let configured = false;
 const bridge = window.atelierGameBridge;
 let auth, db, authApi, firestoreApi;
 let activeUser = null;
@@ -55,6 +55,7 @@ const queueSave = state => {
 };
 
 window.atelierCloud = {
+  ready:()=>ready,
   isConfigured:()=>configured,
   isGoogleEnabled:()=>Boolean(config?.googleEnabled),
   isSignedIn:()=>Boolean(activeUser),
@@ -70,7 +71,11 @@ window.atelierCloud = {
 };
 
 const ready = (async () => {
-  if(!configured)return;
+  const response=await fetch('./api/firebase-config',{cache:'no-store'});
+  if(!response.ok)throw new Error('계정 설정을 불러오지 못했어요. 다시 시도해 주세요.');
+  config=await response.json();
+  configured=Boolean(config?.apiKey && config?.authDomain && config?.projectId && config?.appId);
+  if(!configured)throw new Error('계정 설정이 올바르지 않아요.');
   const version='12.17.0';
   const [appApi,authModule,firestoreModule]=await Promise.all([
     import(`https://www.gstatic.com/firebasejs/${version}/firebase-app.js`),
