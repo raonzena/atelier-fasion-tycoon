@@ -45,12 +45,16 @@
 
 GitHub 저장소를 Vercel 프로젝트에 연결하고 프레임워크 프리셋을 **Other**, 루트 디렉터리를 저장소 루트로 설정합니다. 이 정적 게임에는 빌드 명령이 필요하지 않습니다. `api/firebase-config.mjs` 함수가 `/api/firebase-config`를 제공합니다.
 
-Vercel 프로젝트 **Settings → Environment Variables**에 `FIREBASE_WEB_CONFIG`를 추가합니다. 값은 Firebase 콘솔의 웹 앱 설정에서 복사한 JSON입니다. 예시 값 대신 실제 값을 넣으세요.
+Vercel 프로젝트 **Settings → Environment Variables**에서 다음 변수를 **각각** 추가합니다. Firebase 콘솔의 프로젝트 설정 → 내 앱 → 웹 앱 구성값을 참고하세요.
 
-```json
-{"apiKey":"<Firebase 웹 API 키>","authDomain":"atelier-fasion-tycoon.firebaseapp.com","projectId":"atelier-fasion-tycoon","appId":"<Firebase 웹 앱 ID>","googleEnabled":false}
-```
+| 이름 | 값 |
+| --- | --- |
+| `FIREBASE_API_KEY` | 웹 앱 구성의 `apiKey` 값 |
+| `FIREBASE_AUTH_DOMAIN` | 웹 앱 구성의 `authDomain` 값 |
+| `FIREBASE_PROJECT_ID` | 웹 앱 구성의 `projectId` 값 |
+| `FIREBASE_APP_ID` | 웹 앱 구성의 `appId` 값 |
+| `FIREBASE_GOOGLE_ENABLED` | 선택 사항. Google 제공자를 활성화한 뒤 `true`, 현재는 생략하거나 `false` |
 
-Production에 적용하고, Preview 주소에서 로그인도 시험하려면 Preview에도 적용합니다. 이미 배포했다면 환경변수를 추가한 뒤 다시 배포해야 합니다. 배포 주소(예: `example.vercel.app`)를 Firebase Authentication의 **승인된 도메인**에 추가합니다. 이메일·비밀번호 제공자와 Firestore 규칙은 Firebase 프로젝트에서 설정한 값을 사용합니다.
+Production에 적용하고, Preview에서도 로그인하려면 Preview에도 적용합니다. 이미 배포했다면 환경변수를 추가한 뒤 다시 배포해야 합니다. 배포 주소의 도메인(예: `example.vercel.app`)을 Firebase Authentication의 **승인된 도메인**에 추가합니다. 이메일·비밀번호 제공자와 Firestore 규칙은 Firebase 프로젝트에서 설정한 값을 사용합니다.
 
-이 함수는 브라우저에 필요한 공개 Firebase 웹 구성값만 응답하며 `Cache-Control: no-store`를 설정합니다. 서비스 계정 키나 관리자 자격증명을 `FIREBASE_WEB_CONFIG`에 넣지 마세요. GitHub Actions 변수나 배포 웹훅 변수는 Vercel 실행 함수에 자동 전달되지 않으므로 Vercel 프로젝트 환경변수를 사용합니다.
+함수는 브라우저에 필요한 공개 Firebase 웹 구성값만 응답하며 `Cache-Control: no-store`를 설정합니다. 서비스 계정 키나 관리자 자격증명을 넣지 마세요. GitHub Actions 변수나 배포 웹훅 변수는 Vercel 실행 함수에 자동 전달되지 않으므로 Vercel 프로젝트 환경변수를 사용합니다.

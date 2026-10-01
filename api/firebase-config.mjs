@@ -1,19 +1,18 @@
-const required = ['apiKey', 'authDomain', 'projectId', 'appId'];
-
 export default {
   fetch(request) {
     if (request.method !== 'GET') {
       return new Response('Method not allowed', {status: 405, headers: {Allow: 'GET'}});
     }
 
-    let config;
-    try {
-      config = JSON.parse(process.env.FIREBASE_WEB_CONFIG || 'null');
-    } catch {
-      config = null;
-    }
+    const config = {
+      apiKey: process.env.FIREBASE_API_KEY?.trim(),
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN?.trim(),
+      projectId: process.env.FIREBASE_PROJECT_ID?.trim(),
+      appId: process.env.FIREBASE_APP_ID?.trim(),
+      googleEnabled: process.env.FIREBASE_GOOGLE_ENABLED === 'true'
+    };
 
-    if (!config || required.some(key => typeof config[key] !== 'string' || !config[key])) {
+    if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId) {
       return Response.json({error: 'Firebase is not configured'}, {
         status: 503,
         headers: {'Cache-Control': 'no-store'}
@@ -25,7 +24,7 @@ export default {
       authDomain: config.authDomain,
       projectId: config.projectId,
       appId: config.appId,
-      googleEnabled: config.googleEnabled === true
+      googleEnabled: config.googleEnabled
     }, {
       headers: {
         'Cache-Control': 'no-store',
