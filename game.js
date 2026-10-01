@@ -132,6 +132,11 @@
   const calendarYear=()=>1+Math.floor((2+state.monthsElapsed)/12);
   const currentTrend=()=>trends[(Math.floor(state.monthsElapsed/3)%4)+4*(Math.floor(state.monthsElapsed/12)%2)];
   const isFashionWeekMonth=()=>((state.monthsElapsed+1)%4===0);
+  const MAX_PRODUCTION_STAFF=4,MAX_YEARLY_PRODUCTIONS=5;
+  const participationCount=(id,year=calendarYear())=>{
+    const member=state.staff[id];
+    return member?.productionYear===year?Math.min(MAX_YEARLY_PRODUCTIONS,Math.max(0,member.productionCount||0)):0;
+  };
   const officeRequiredReleases=level=>level*2;
   const definition = id => items.find(i => i.id === id) || furniture.find(i => state.ownedFurniture.some(o => o.id === id && o.kind === i.id));
   const itemName = id => {const d=definition(id);return d ? d.name : '알 수 없는 물건';};
@@ -535,7 +540,13 @@
     }
     return rolls;
   };
-  const collectionGoal = (totals,matches,material) => Math.max(1,Math.ceil(weightedStats(totals)*.45+3.5-matches*.65-(material?1:0)));
+  const researchDiscount=choices=>Number(has('patternResearch')&&['셔츠','바지'].includes(choices.item))+
+    Number(has('silhouetteResearch')&&['원피스','아우터'].includes(choices.item))+
+    Number(has('trendResearch')&&choices.style===currentTrend().style)+
+    Number(has('styleResearch')&&choices.style!==currentTrend().style)+
+    Number(has('customerResearch')&&choices.target===currentTrend().target)+
+    Number(has('audienceResearch')&&choices.target!==currentTrend().target);
+  const collectionGoal = (totals,matches,material,choices) => Math.max(1,Math.ceil(weightedStats(totals)*.45+3.5-matches*.65-(material?1:0)-researchDiscount(choices)));
   const collectionTrial = (assigned,goal,random=Math.random) => {
     const rolls=rollStats(assigned,random),score=weightedStats(rolls);
     return {rolls,score,goal,success:score>=goal};
@@ -557,7 +568,7 @@
     const trend=currentTrend();
     const matches=Number(choices.target===trend.target)+Number(choices.item===trend.item)+Number(choices.style===trend.style);
     const material=choices.material==='리넨'&&trend.season==='여름'||choices.material==='재생 원단'&&choices.style==='아웃도어';
-    const totals=teamStats(assigned),goal=collectionGoal(teamStats(assigned,true),matches,material);
+    const totals=teamStats(assigned),goal=collectionGoal(teamStats(assigned,true),matches,material,choices);
     if(!Object.values(assigned).some(Boolean))return [0,matches,totals,goal];
     // Use a fixed sequence so the preview stays stable while the actual trial remains random.
     let seed=123456789,wins=0;
@@ -579,11 +590,14 @@
     if(fashionWeek)render();
     const trend=currentTrend();
     const choices={target:trend.target,item:baseCategories.includes(trend.item)?trend.item:'티셔츠',style:trend.style,material:'면'};
-    const assigned=Object.fromEntries(hiredWorkers().map(w=>[w.id,true]));
-    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RUNWAY':'NEW COLLECTION')+' · '+trend.season+' '+currentMonth()+'월</span><h2 id="modalTitle">'+(fashionWeek?'패션위크 컬렉션 기획':'다음 컬렉션 기획')+'</h2>'+(fashionWeek?'<div class="fashion-week-preview compact"><img data-skeleton src="./assets/fashion-week.webp" alt="패션위크 런웨이 행사장"></div>':'')+'<p>제작비 ₩38M · 이번 시즌의 시장 흐름과 팀 능력치를 고려하세요.</p><div id="choices"></div><div class="choice-group"><strong>제작에 배정할 직원</strong><div id="staffChoices" class="staff-choices"></div></div><div id="chancePreview" class="chance-preview"></div><button class="modal-primary" id="confirmLaunch" type="button">'+(fashionWeek?'제작하고 런웨이 참가':'제작하고 출시하기')+'</button>');
+    const eligible=hiredWorkers().filter(w=>participationCount(w.id)<MAX_YEARLY_PRODUCTIONS);
+    const assigned=Object.fromEntries(hiredWorkers().map(w=>[w.id,eligible.slice(0,MAX_PRODUCTION_STAFF).includes(w)]));
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RUNWAY':'NEW COLLECTION')+' · '+trend.season+' '+currentMonth()+'월</span><h2 id="modalTitle">'+(fashionWeek?'패션위크 컬렉션 기획':'다음 컬렉션 기획')+'</h2>'+(fashionWeek?'<div class="fashion-week-preview compact"><img data-skeleton src="./assets/fashion-week.webp" alt="패션위크 런웨이 행사장"></div>':'')+'<p>제작비 ₩38M · 이번 시즌의 시장 흐름과 팀 능력치를 고려하세요.</p><div id="choices"></div><div class="choice-group"><strong>제작에 배정할 직원 · 최대 4명</strong><p>직원마다 게임 내 1년에 최대 5번 참여할 수 있어요. 새해가 되면 횟수가 초기화됩니다.</p><div id="staffChoices" class="staff-choices"></div></div><div id="chancePreview" class="chance-preview"></div><button class="modal-primary" id="confirmLaunch" type="button">'+(fashionWeek?'제작하고 런웨이 참가':'제작하고 출시하기')+'</button>');
     const update=()=>{
       const result=successChance(choices,assigned);
-      $('chancePreview').textContent='예상 성공률 '+result[0]+'% · 합산 목표 '+result[3]+' · 트렌드 일치 '+result[1]+'/3 · 참여 직원 '+Object.values(assigned).filter(Boolean).length+'명'+(fashionWeek?' · 런웨이 입상 최소 14점':'');
+      const selectedCount=Object.values(assigned).filter(Boolean).length;
+      $('chancePreview').textContent=(selectedCount?'예상 성공률 '+result[0]+'% · 합산 목표 '+result[3]+' · 트렌드 일치 '+result[1]+'/3':'참여할 직원을 선택해 주세요.')+' · 참여 직원 '+selectedCount+'/'+MAX_PRODUCTION_STAFF+'명'+(fashionWeek?' · 런웨이 입상 최소 14점':'');
+      $('confirmLaunch').disabled=selectedCount===0;
     };
     [['target','고객',targets],['item','의류',availableItems()],['style','스타일',styles],['material','소재',availableMaterials()]].forEach(groupData=>{
       const [key,label,values]=groupData;
@@ -599,12 +613,18 @@
     });
     hiredWorkers().forEach(w=>{
       const label=document.createElement('label');label.className='staff-choice';
-      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;
-      checkbox.onchange=()=>{assigned[w.id]=checkbox.checked;update();};
+      const count=participationCount(w.id),exhausted=count>=MAX_YEARLY_PRODUCTIONS;
+      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=assigned[w.id];checkbox.disabled=exhausted;
+      checkbox.onchange=()=>{
+        if(checkbox.checked&&Object.values(assigned).filter(Boolean).length>=MAX_PRODUCTION_STAFF){checkbox.checked=false;toast('제작에는 최대 4명까지 참여할 수 있어요.');return;}
+        assigned[w.id]=checkbox.checked;update();
+      };
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
       const text=document.createElement('span');text.textContent=w.name+' · '+w.role+' · LV.'+state.staff[w.id].level;
       const stats=document.createElement('small');stats.className='staff-choice-stats';stats.textContent=statSummary(w);
-      label.append(checkbox,img,text,stats);$('staffChoices').append(label);
+      const usage=document.createElement('small');usage.className='staff-usage';usage.textContent=calendarYear()+'년 참여 '+count+'/'+MAX_YEARLY_PRODUCTIONS+(exhausted?' · 올해 참여 완료':'');
+      if(exhausted)label.classList.add('is-exhausted');
+      label.append(checkbox,img,text,stats,usage);$('staffChoices').append(label);
     });
     update();$('confirmLaunch').onclick=()=>beginProduction(choices,assigned,fashionWeek);
   };
@@ -618,7 +638,11 @@
   ];
   const beginProduction = (choices,assigned,fashionWeek=false) => {
     if(isProducing)return;
-    if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
+    const selected=hiredWorkers().filter(w=>assigned[w.id]);
+    if(!selected.length){toast('참여 가능한 직원을 한 명 이상 배정해 주세요.');return;}
+    if(selected.length>MAX_PRODUCTION_STAFF||selected.some(w=>participationCount(w.id)>=MAX_YEARLY_PRODUCTIONS)){
+      toast('직원은 최대 4명, 1년에 각 5회까지 참여할 수 있어요.');return;
+    }
     const [chance,,totals,goal]=successChance(choices,assigned);
     const outcome=collectionTrial(assigned,goal);
     const target=outcome.success?100:Math.min(chance,99);
@@ -689,7 +713,8 @@
     requestAnimationFrame(tick);
   };
   const launch = (choices,assigned,outcome,fashionWeek=false) => {
-    if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
+    const selected=hiredWorkers().filter(w=>assigned[w.id]);
+    if(!selected.length||selected.length>MAX_PRODUCTION_STAFF||selected.some(w=>participationCount(w.id)>=MAX_YEARLY_PRODUCTIONS))return;
     const previous={assets:state.assets,customers:state.customers,research:state.research};
     const trend=currentTrend(),releaseMonth=currentMonth(),releaseYear=calendarYear();
     const [chance,matches]=successChance(choices,assigned);
@@ -707,6 +732,8 @@
     for(const w of hiredWorkers()) if(assigned[w.id]){
       const member=state.staff[w.id],before=member.level;
       const beforeStats=employeeStats(w);
+      member.productionCount=participationCount(w.id,releaseYear)+1;
+      member.productionYear=releaseYear;
       if(member.level<10){
         member.xp++;
         if(member.xp>=member.level*2){member.xp=0;member.level++;}
@@ -742,26 +769,58 @@
     showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
-  const showResearch = () => {
-    const projects=[
-      {id:'linen',name:'리넨 소재',cost:4,detail:'여름 컬렉션 성공률 +6%'},
-      {id:'recycled',name:'재생 원단',cost:6,detail:'아웃도어 스타일 성공률 +6%'}
-    ];
-    showModal('<span class="modal-kicker">TEAM & DISCOVERY</span><h2 id="modalTitle">팀과 연구</h2><p>컬렉션 제작에 참여한 직원은 경험을 얻고 레벨이 오릅니다. 현재 연구 포인트 '+state.research+'P.</p><div id="teamRows"></div><h3>소재 연구</h3><div id="researchRows"></div><h3>최근 컬렉션</h3><div id="historyRows"></div>');
-    hiredWorkers().forEach(w=>{
-      const row=document.createElement('div');row.className='report-line';
-      row.textContent=w.name;
-      const strong=document.createElement('strong');
-      const s=state.staff[w.id];strong.textContent='LV.'+s.level+' · '+statSummary(w)+' · 경험 '+s.xp+'/'+(s.level*2);
-      row.append(strong);$('teamRows').append(row);
+  const showStaff = (role='디자인') => {
+    const roles=['디자인','생산','마케팅'];
+    if(!roles.includes(role))role=roles[0];
+    showModal('<span class="modal-kicker">MY TEAM</span><h2 id="modalTitle">직원</h2><p>직원별 능력치와 올해 제작 참여 횟수를 확인하세요. 한 해에 직원당 최대 5회 참여할 수 있습니다.</p><div class="section-tabs" id="staffTabs" role="tablist" aria-label="직군"></div><div id="staffRows" class="staff-roster" role="tabpanel"></div>');
+    roles.forEach(name=>{
+      const button=document.createElement('button');button.type='button';button.textContent=name;button.setAttribute('role','tab');
+      button.setAttribute('aria-selected',String(name===role));button.className=name===role?'active':'';
+      button.onclick=()=>showStaff(name);$('staffTabs').append(button);
     });
-    projects.forEach(project=>{
+    const members=hiredWorkers().filter(w=>w.role===role);
+    if(!members.length){$('staffRows').textContent='고용한 '+role+' 직원이 없습니다. 직원 고용 메뉴에서 채용해 보세요.';return;}
+    members.forEach(w=>{
+      const row=document.createElement('button');row.type='button';row.className='staff-roster-card';
+      const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
+      const detail=document.createElement('span');
+      detail.innerHTML='<strong>'+w.name+' · LV.'+state.staff[w.id].level+'</strong><small>'+statSummary(w)+'</small><small>'+calendarYear()+'년 제작 참여 '+participationCount(w.id)+'/'+MAX_YEARLY_PRODUCTIONS+'회</small>';
+      row.append(img,detail);row.onclick=()=>showWorkerProfile(w.id,role);$('staffRows').append(row);
+    });
+  };
+  const researchProjects={
+    '소재':[
+      {id:'linen',name:'리넨 소재',cost:4,detail:'리넨을 사용할 수 있어요. 여름 컬렉션 제작 목표 −1'},
+      {id:'recycled',name:'재생 원단',cost:6,detail:'재생 원단을 사용할 수 있어요. 아웃도어 제작 목표 −1'}
+    ],
+    '의류':[
+      {id:'patternResearch',name:'기본 패턴 연구',cost:5,detail:'셔츠·바지 제작 목표 −1'},
+      {id:'silhouetteResearch',name:'실루엣 연구',cost:7,detail:'원피스·아우터 제작 목표 −1'}
+    ],
+    '스타일':[
+      {id:'trendResearch',name:'트렌드 분석',cost:5,detail:'이번 시즌 유행 스타일 제작 목표 −1'},
+      {id:'styleResearch',name:'스타일 응용',cost:7,detail:'유행과 다른 스타일 제작 목표 −1'}
+    ],
+    '고객':[
+      {id:'customerResearch',name:'고객 조사',cost:5,detail:'이번 시즌 주요 고객층 제작 목표 −1'},
+      {id:'audienceResearch',name:'신규 고객 탐색',cost:7,detail:'주요 고객층 이외 대상 제작 목표 −1'}
+    ]
+  };
+  const showResearch = (category='소재') => {
+    if(!researchProjects[category])category='소재';
+    showModal('<span class="modal-kicker">DISCOVERY</span><h2 id="modalTitle">연구</h2><p>연구 포인트 '+state.research+'P · 연구한 항목은 컬렉션 제작에 적용됩니다.</p><div class="section-tabs" id="researchTabs" role="tablist" aria-label="연구 분야"></div><div id="researchRows" role="tabpanel"></div><h3>최근 컬렉션</h3><div id="historyRows"></div>');
+    Object.keys(researchProjects).forEach(name=>{
+      const button=document.createElement('button');button.type='button';button.textContent=name;button.setAttribute('role','tab');
+      button.setAttribute('aria-selected',String(name===category));button.className=name===category?'active':'';
+      button.onclick=()=>showResearch(name);$('researchTabs').append(button);
+    });
+    researchProjects[category].forEach(project=>{
       const row=document.createElement('div');row.className='research-row';
       const body=document.createElement('div');body.innerHTML='<strong>'+project.name+'</strong><small>'+project.detail+'</small>';
       const button=document.createElement('button');button.type='button';
       button.textContent=has(project.id)?'연구 완료':project.cost+'P 연구';
       button.disabled=has(project.id)||state.research<project.cost;
-      button.onclick=()=>{state.research-=project.cost;state.unlocks.push(project.id);save();showResearch();toast(project.name+' 해금!');};
+      button.onclick=()=>{if(has(project.id)||state.research<project.cost)return;state.research-=project.cost;state.unlocks.push(project.id);save();showResearch(category);toast(project.name+' 연구 완료!');};
       row.append(body,button);$('researchRows').append(row);
     });
     if(!state.history.length)$('historyRows').textContent='아직 출시한 컬렉션이 없습니다.';
@@ -777,10 +836,11 @@
     for(let y=b[2];y<=b[3];y++)for(let x=b[0];x<=b[1];x++)if(!occupied(x,y))return {x,y};
     return null;
   };
-  const showWorkerProfile = id => {
+  const showWorkerProfile = (id,returnRole=null) => {
     const w=definition(id),member=state.staff[id];
     if(!w||!member)return;
-    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><p>기본값 8은 레벨마다 +1, 16은 +2처럼 항목별 기본값에 비례해 성장합니다. 제작 시 네 능력을 각각 굴려 합산 결과로 성공을 판단합니다.</p>');
+    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><div class="report-line">'+calendarYear()+'년 제작 참여 <strong>'+participationCount(id)+' / '+MAX_YEARLY_PRODUCTIONS+'회</strong></div><p>제작에 참여하면 경험을 얻고, 새해에는 참여 가능 횟수가 초기화됩니다.</p>'+(returnRole?'<button class="account-secondary" id="backToStaff" type="button">직원 목록으로</button>':''));
+    if(returnRole)$('backToStaff').onclick=()=>showStaff(returnRole);
   };
   const pageSize=5;
   const showPager = (page,count,onPage) => {
@@ -931,6 +991,7 @@
   };
   $('doneButton').onclick=cancelLayout;
   $('officeInfoButton').onclick=showOfficeInfo;
+  $('staffButton').onclick=()=>{setMenu(false);showStaff();};
   $('researchButton').onclick=()=>{setMenu(false);showResearch();};
   $('launchButton').onclick=()=>editMode?saveLayout():showLaunch();
   $('modalClose').onclick=closeModal;

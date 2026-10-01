@@ -564,3 +564,15 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .account-form button:disabled,.account-google:disabled{opacity:.55;cursor:wait}
 .modal-layer{z-index:40}
 .toast{z-index:50}
+.staff-choice.is-exhausted{opacity:.55;cursor:not-allowed}
+.staff-usage{display:block;font-size:12px;line-height:1.35;color:#805469}
+.section-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+.section-tabs button{flex:1 1 70px;min-width:0;padding:10px 8px;border:1px solid #e8c7c2;border-radius:9px;background:#fff6ed;color:#735261;font:inherit;font-weight:750;cursor:pointer}
+.section-tabs button.active{background:#bd7083;color:#fff;border-color:#bd7083}
+.staff-roster{display:grid;gap:10px;min-height:80px}
+.staff-roster-card{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:1px solid #efd7cc;border-radius:12px;background:#fff6ed;color:#593c4c;text-align:left;font:inherit;cursor:pointer}
+.staff-roster-card img{width:72px;height:72px;object-fit:contain;flex:none}
+.staff-roster-card span{min-width:0;display:grid;gap:4px}
+.staff-roster-card small{font-size:12px;line-height:1.4;color:#765b64}
+.staff-roster-card:hover,.staff-roster-card:focus-visible{border-color:#bd7083}
+@media(max-width:480px){.staff-choices{grid-template-columns:repeat(2,minmax(0,1fr))}.section-tabs button{flex-basis:42%}.staff-roster-card img{width:60px;height:60px}}
