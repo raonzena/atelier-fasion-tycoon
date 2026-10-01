@@ -11,7 +11,7 @@
     {id:'longRack',name:'긴 의류 행거',sprite:'prop-long-rack',level:1,type:'furniture',spanX:2,bonus:{efficiency:2}},
     {id:'computerDesk',name:'컴퓨터 책상',sprite:'prop-computer-desk',level:2,type:'furniture',spanX:2,bonus:{design:2,trend:1}},
     {id:'mannequin',name:'마네킹',sprite:'prop-mannequin',level:1,type:'furniture',bonus:{sewing:2}},
-    {id:'breakroom',name:'탕비실',sprite:'prop-breakroom',level:2,type:'furniture',bonus:{efficiency:2}},
+    {id:'breakroom',name:'탕비실',sprite:'prop-breakroom',level:2,type:'furniture',spanX:2,bonus:{efficiency:2}},
     {id:'fridge',name:'냉장고',sprite:'prop-fridge',level:2,type:'furniture',bonus:{efficiency:1}},
     {id:'largePhoto',name:'확장 촬영 공간',sprite:'prop-large-photo',level:4,type:'furniture',spanX:2,bonus:{design:1,trend:2}},
     {id:'fabricSamples',name:'원단 샘플 수납장',sprite:'prop-fabric-samples',level:3,type:'furniture',bonus:{design:1,sewing:1}},
@@ -37,6 +37,7 @@
   ];
   const workers = items.filter(i => i.type === 'worker');
   const furniture = items.filter(i => i.type === 'furniture');
+  const furnitureTilt = {designDesk:14,sewingDesk:17,rack:22,photo:15,moodboard:15,lounge:15,longRack:22,computerDesk:18,mannequin:0,breakroom:13,fridge:18,largePhoto:16,fabricSamples:20};
   const skeletonImage = img => {
     img.setAttribute('data-skeleton','');
     const finish = () => img.classList.add('image-ready');
@@ -96,7 +97,7 @@
   const styles = ['미니멀','스트리트','클래식','러블리','아웃도어'];
   const targets = ['20대 직장인','10대 학생','아웃도어 고객'];
   const initial = () => ({
-    layoutVersion:3,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
+    layoutVersion:4,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
     research:0,unlocks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
@@ -116,7 +117,7 @@
         interestDue:Number.isFinite(saved.loan?.interestDue)?Math.max(0,saved.loan.interestDue):0
       };
       for(const id of loaded.hired) loaded.staff[id] = loaded.staff[id] || {level:1,xp:0};
-      if(saved.layoutVersion!==3){
+      if(saved.layoutVersion!==3&&saved.layoutVersion!==4){
         const n=gridSizes[loaded.officeLevel-1],oldWidth=saved.layoutVersion===2?8:10,oldHeight=saved.layoutVersion===2?8:7;
         const used=new Set();
         loaded.placed=loaded.placed.map(p=>{
@@ -128,7 +129,25 @@
           }
           used.add(x+','+y);return {...p,x,y};
         });
-        loaded.layoutVersion=3;
+      }
+      if(saved.layoutVersion!==4){
+        const n=gridSizes[loaded.officeLevel-1],remapped=[];
+        const width=id=>{
+          const kind=loaded.ownedFurniture.find(o=>o.id===id)?.kind||id;
+          return furniture.find(f=>f.id===kind)?.spanX||1;
+        };
+        const fits=(id,x,y)=>x>=0&&y>=0&&x+width(id)<=n&&y<n&&remapped.every(p=>y!==p.y||x+width(id)<=p.x||p.x+width(p.id)<=x);
+        for(const piece of loaded.placed){
+          let {x,y}=piece;
+          if(!fits(piece.id,x,y)){
+            const free=Array.from({length:n*n},(_,i)=>({x:i%n,y:Math.floor(i/n)})).find(cell=>fits(piece.id,cell.x,cell.y));
+            if(!free)continue;
+            ({x,y}=free);
+          }
+          remapped.push({...piece,x,y});
+        }
+        loaded.placed=remapped;
+        loaded.layoutVersion=4;
       }
       return loaded;
     }
@@ -249,6 +268,7 @@
       button.className='piece '+d.type+(selected===p.id?' selected':'');
       button.setAttribute('aria-label',d.name+' · '+(p.x+1)+'열 '+(p.y+1)+'행. '+(editMode?'끌거나 선택 후 빈 칸을 터치해 이동':'선택해 정보 보기'));
       if(d.spanX===2)button.classList.add('wide-furniture');
+      if(d.type==='furniture')button.style.setProperty('--furniture-tilt',(furnitureTilt[d.id]||0)+'deg');
       const center=cellCenter(p.x+(d.spanX===2 ? .5 : 0),p.y);
       button.style.left=center.left+'%';
       button.style.top=center.top+'%';
@@ -259,7 +279,7 @@
       let dragStart=null, dragged=false;
       button.addEventListener('pointerdown',event=>{
         if(!editMode)return;
-        dragStart={x:event.clientX,y:event.clientY};
+        dragStart={x:event.clientX,y:event.clientY,cell:positionFromPointer(event),origin:{x:p.x,y:p.y}};
         button.setPointerCapture(event.pointerId);
       });
       button.addEventListener('pointermove',event=>{
@@ -267,11 +287,12 @@
         const dx=event.clientX-dragStart.x,dy=event.clientY-dragStart.y;
         if(Math.hypot(dx,dy)>5){
           button.style.transform='translate(-50%,-50%) translate('+dx+'px,'+dy+'px)';
-          const cell=positionFromPointer(event),target=tileByCell.get(cell.x+','+cell.y);
-          const companion=d.spanX===2?tileByCell.get((cell.x+1)+','+cell.y):null;
+          const cell=positionFromPointer(event),pos={x:dragStart.origin.x+cell.x-dragStart.cell.x,y:dragStart.origin.y+cell.y-dragStart.cell.y};
+          const target=tileByCell.get(pos.x+','+pos.y);
+          const companion=d.spanX===2?tileByCell.get((pos.x+1)+','+pos.y):null;
           if(target!==dragTargetTile||companion!==dragTargetCompanion){clearDragTarget();dragTargetTile=target||null;dragTargetCompanion=companion||null;}
           if(dragTargetTile){
-            const valid=canPlace(p.id,cell.x,cell.y);
+            const valid=canPlace(p.id,pos.x,pos.y);
             for(const tile of [dragTargetTile,dragTargetCompanion].filter(Boolean)){
               tile.classList.add('drag-target');tile.classList.toggle('drag-invalid',!valid);
             }
@@ -282,9 +303,9 @@
       button.addEventListener('pointerup',event=>{
         if(!dragStart)return;
         const distance=Math.hypot(event.clientX-dragStart.x,event.clientY-dragStart.y);
+        const cell=positionFromPointer(event),pos={x:dragStart.origin.x+cell.x-dragStart.cell.x,y:dragStart.origin.y+cell.y-dragStart.cell.y};
         dragStart=null;button.style.transform='';clearDragTarget();
         if(distance>9){
-          const pos=positionFromPointer(event);
           dragged=true;move(p.id,pos.x,pos.y);
           setTimeout(()=>{dragged=false;},100);
         }

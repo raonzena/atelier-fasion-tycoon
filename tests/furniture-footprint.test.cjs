@@ -12,7 +12,7 @@ const items=[
   {id:'computerDesk',type:'furniture',spanX:2,bonus:{design:2,trend:1}},
   {id:'mannequin',type:'furniture',bonus:{sewing:2}},
   {id:'largePhoto',type:'furniture',spanX:2,bonus:{design:1,trend:2}},
-  {id:'breakroom',type:'furniture',bonus:{efficiency:2}},
+  {id:'breakroom',type:'furniture',spanX:2,bonus:{efficiency:2}},
   {id:'yuna',type:'worker'}
 ];
 const state={officeLevel:1,hired:['yuna'],ownedFurniture:[
@@ -31,6 +31,7 @@ assert.equal(occupied(2,0),true);
 assert.equal(canPlace('mannequin-3',2,0),false);
 assert.equal(canPlace('computerDesk-2',2,1),false); // Both cells must fit.
 assert.equal(canPlace('largePhoto-4',2,2),false);
+assert.equal(canPlace('breakroom-5',2,2),false);
 assert.equal(canPlace('computerDesk-2',0,1),true);
 assert.equal(canPlace('longRack-1',1,0),true); // A piece may stay in its own footprint.
 assert.equal(furnitureBonuses().efficiency,2);
