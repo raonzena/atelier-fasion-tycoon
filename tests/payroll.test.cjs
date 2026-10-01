@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+
+const source=fs.readFileSync(path.join(__dirname,'../dist/client/game.js'),'utf8');
+const start=source.indexOf('  const hiredWorkers =');
+const end=source.indexOf('  const ownedItems =',start);
+assert(start>0&&end>start);
+const state={hired:['yuna','tani']};
+const context={state,workers:[{id:'yuna',cost:24},{id:'tani',cost:31}],roundMoney:value=>Math.round(value*10)/10};
+vm.createContext(context);
+vm.runInContext(source.slice(start,end)+'\nthis.payroll={hiringCost,monthlyPayroll};',context);
+assert.equal(context.payroll.hiringCost(context.workers[0]),12);
+assert.equal(context.payroll.hiringCost(context.workers[1]),15.5);
+assert.equal(context.payroll.monthlyPayroll(),27.5);
+state.hired=['tani'];
+assert.equal(context.payroll.monthlyPayroll(),15.5);
+state.hired=[];
+assert.equal(context.payroll.monthlyPayroll(),0);
+assert.match(source,/state\.assets=roundMoney\(state\.assets\+revenue-38-salaryPaid/);
+assert.match(source,/state\.staff\[w\.id\]=state\.staff\[w\.id\]\|\|\{level:1,xp:0\}/);
+console.log('Hiring and monthly payroll use half-cost, and firing removes future salary without resetting staff progress.');

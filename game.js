@@ -142,6 +142,8 @@
   const definition = id => items.find(i => i.id === id) || furniture.find(i => state.ownedFurniture.some(o => o.id === id && o.kind === i.id));
   const itemName = id => {const d=definition(id);return d ? d.name : '알 수 없는 물건';};
   const hiredWorkers = () => workers.filter(w => state.hired.includes(w.id));
+  const hiringCost = w => w.cost/2;
+  const monthlyPayroll = () => roundMoney(hiredWorkers().reduce((total,w)=>total+hiringCost(w),0));
   const ownedItems = () => state.ownedFurniture.map(o => ({...definition(o.id),id:o.id})).concat(hiredWorkers());
   const placed = id => state.placed.find(i => i.id === id);
   const has = key => state.unlocks.includes(key);
@@ -303,6 +305,7 @@
     $('customerValue').textContent=state.customers.toLocaleString()+'명';
     $('officeTitle').textContent=offices[state.officeLevel-1];
     $('officeLevel').textContent='오피스 LV. '+state.officeLevel+' / '+OFFICE_MAX;
+    $('nextPayroll').textContent='₩'+money(monthlyPayroll())+'M';
     const debt=loanBalance();
     $('officeLoan').hidden=debt===0;
     if(debt){
@@ -726,7 +729,8 @@
     const revenue=Math.round(score*(success?1.8:1.12)+state.companyLevel*4);
     const gained=Math.round((score-48)*3.7);
     const points=success?3:2;
-    state.assets=roundMoney(state.assets+revenue-38+(runway?.prize||0));
+    const salaryPaid=monthlyPayroll();
+    state.assets=roundMoney(state.assets+revenue-38-salaryPaid+(runway?.prize||0));
     state.customers=Math.max(0,state.customers+gained);
     state.research+=points;
     const chargedInterest=accrueLoanInterest();
@@ -751,10 +755,11 @@
     if(state.releases===5&&!has('bag')){state.unlocks.push('bag');discoveries.push('가방');}
     const reason=matches>=2?'시즌 취향과 고객 수요를 잘 맞췄습니다.':matches===1?'일부 시장 수요와 맞았지만 조합을 더 다듬을 수 있습니다.':'이번 시즌의 인기 상품·스타일·고객과 거리가 있었습니다.';
     const review=score>=75?'“다음 컬렉션도 기대돼요!”':score>=55?'“디자인은 좋지만 조금 더 고민해 볼게요.”':'“이번 시즌에는 다른 스타일을 찾고 있었어요.”';
-    state.history.unshift({name:choices.style+' '+choices.item,season:trend.season,month:releaseMonth,year:releaseYear,score,revenue,review,fashionWeek:Boolean(runway),fashionWeekRank:runway?.rank||0,prize:runway?.prize||0});
+    state.history.unshift({name:choices.style+' '+choices.item,season:trend.season,month:releaseMonth,year:releaseYear,score,revenue,salaryPaid,review,fashionWeek:Boolean(runway),fashionWeekRank:runway?.rank||0,prize:runway?.prize||0});
     state.history=state.history.slice(0,8);save();render();
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
     const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.level===10&&!w.leveled?'최대 레벨':'+1 XP')+'</span></div>').join('')+'</div>';
+    const salaryReport='<div class="report-line">이번 달 직원 월급 <strong>−₩'+money(salaryPaid)+'M · '+state.hired.length+'명</strong></div>';
     const loanReport=chargedInterest?'<div class="report-line">이번 달 대출 이자 <strong>+₩'+money(chargedInterest)+'M · 총 상환액 ₩'+money(loanBalance())+'M</strong></div>':'';
     const companyLevelUp=state.companyLevel>beforeCompanyLevel?levelUpPanel('회사 LV.'+state.companyLevel+' 달성!',[
       levelChange('대출 원금 한도',loanLimit(beforeCompanyLevel),loanLimit(state.companyLevel),'M','M'),
@@ -768,7 +773,7 @@
     pendingLevelUp=companyLevelUp+staffLevelUp||null;
     const runwayReport=runway?'<section class="runway-report"><div class="fashion-week-preview compact"><img data-skeleton src="./assets/fashion-week.webp" alt="패션위크 런웨이"></div><h3>'+(runway.rank?runway.rank+'위 입상!':'이번 패션위크는 입상하지 못했어요')+'</h3><p>네 능력 가중 합계 '+runway.score.toFixed(1)+'점 · 최소 입상 기준 14점</p><div class="runway-stat-grid">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><ol class="runway-podium">'+runway.podium.map((entry,index)=>'<li class="'+(entry.player?'our-brand':'')+'"><span>'+ (index+1)+'위 · '+entry.name+'</span><strong>'+entry.score.toFixed(1)+'점</strong></li>').join('')+'</ol><p class="runway-prize">'+(runway.prize?'패션위크 상금 +₩'+money(runway.prize)+'M':'상금 없음 · 다음 패션위크에 다시 도전해 보세요')+'</p></section>':'';
     const resultHero='<div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div>';
-    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+salaryReport+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
   const showStaff = (role='디자인') => {
@@ -841,11 +846,24 @@
     for(let y=b[2];y<=b[3];y++)for(let x=b[0];x<=b[1];x++)if(!occupied(x,y))return {x,y};
     return null;
   };
+  const showFireConfirm = id => {
+    const w=workers.find(member=>member.id===id);
+    if(!w||!state.hired.includes(id))return;
+    if(editMode){toast('배치 수정을 마친 뒤 직원을 해고할 수 있어요.');return;}
+    showModal('<span class="modal-kicker">STAFF MANAGEMENT</span><h2 id="modalTitle">'+w.name+'을 해고할까요?</h2><p>해고하면 사무실 배치와 다음 달 월급에서 제외됩니다. 고용비는 환불되지 않으며, 다시 고용하면 레벨과 올해 참여 기록은 이어집니다.</p><div class="report-line">줄어드는 월급 <strong>₩'+money(hiringCost(w))+'M</strong></div><button class="modal-primary fire-confirm" id="confirmFire" type="button">해고하기</button><button class="account-secondary" id="cancelFire" type="button">취소</button>');
+    $('confirmFire').onclick=()=>{
+      state.hired=state.hired.filter(workerId=>workerId!==id);
+      state.placed=state.placed.filter(piece=>piece.id!==id);
+      save();render();showStaff(w.role);toast(w.name+' 해고 완료');
+    };
+    $('cancelFire').onclick=()=>showWorkerProfile(id,w.role);
+  };
   const showWorkerProfile = (id,returnRole=null) => {
     const w=definition(id),member=state.staff[id];
     if(!w||!member)return;
-    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><div class="report-line">남은 참여 횟수 <strong>'+remainingParticipations(id)+'회</strong></div><p>제작에 참여하면 경험을 얻고, 새해에는 참여 가능 횟수가 초기화됩니다.</p>'+(returnRole?'<button class="account-secondary" id="backToStaff" type="button">직원 목록으로</button>':''));
+    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><div class="report-line">남은 참여 횟수 <strong>'+remainingParticipations(id)+'회</strong></div><div class="report-line">월급 <strong>₩'+money(hiringCost(w))+'M</strong></div><p>제작에 참여하면 경험을 얻고, 새해에는 참여 가능 횟수가 초기화됩니다.</p>'+(returnRole?'<button class="account-secondary" id="backToStaff" type="button">직원 목록으로</button>':'')+'<button class="account-secondary fire-action" id="fireWorker" type="button">직원 해고</button>');
     if(returnRole)$('backToStaff').onclick=()=>showStaff(returnRole);
+    $('fireWorker').onclick=()=>showFireConfirm(id);
   };
   const pageSize=5;
   const showPager = (page,count,onPage) => {
@@ -869,7 +887,7 @@
   const showHire = (page=0) => {
     const roster=workers.slice().sort((a,b)=>a.level-b.level);
     page=Math.max(0,Math.min(page,Math.ceil(roster.length/pageSize)-1));
-    showModal('<span class="modal-kicker">STAFF RECRUITMENT</span><h2 id="modalTitle">직원 고용</h2><p>오피스 LV.'+state.officeLevel+' · 고용 '+state.hired.length+'/'+employeeCap[state.officeLevel-1]+'명. 채용한 고양이는 사무실에 배치되고 제작에 참여할 수 있어요. 컬렉션 제작비는 별도로 ₩38M이 필요해요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="직원 목록 페이지"></nav>');
+    showModal('<span class="modal-kicker">STAFF RECRUITMENT</span><h2 id="modalTitle">직원 고용</h2><p>오피스 LV.'+state.officeLevel+' · 고용 '+state.hired.length+'/'+employeeCap[state.officeLevel-1]+'명. 고용비를 내고 채용하면 매달 같은 금액의 월급이 지급됩니다. 컬렉션 제작비는 별도로 ₩38M이 필요해요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="직원 목록 페이지"></nav>');
     roster.slice(page*pageSize,(page+1)*pageSize).forEach(w=>{
       const row=document.createElement('div');row.className='shop-row';
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';img.loading='eager';img.decoding='async';img.width=72;img.height=72;
@@ -877,14 +895,16 @@
       const heading=document.createElement('strong');heading.textContent=w.name+' · '+w.role;
       const detail=document.createElement('small');detail.textContent=statSummary(w);
       const unlock=document.createElement('small');unlock.textContent='오피스 LV.'+w.level+'부터';
-      body.append(heading,detail,unlock);
+      const salary=document.createElement('small');salary.textContent='고용비 ₩'+money(hiringCost(w))+'M · 월급 ₩'+money(hiringCost(w))+'M';
+      body.append(heading,detail,unlock,salary);
       const button=document.createElement('button');button.type='button';
-      const owned=state.hired.includes(w.id),locked=state.officeLevel<w.level,full=state.hired.length>=employeeCap[state.officeLevel-1],affordable=state.assets>=w.cost;
-      button.textContent=owned?'고용됨':locked?'잠김':full?'정원 마감':!affordable?'자산 부족':'₩'+w.cost+'M 고용';
+      const price=hiringCost(w);
+      const owned=state.hired.includes(w.id),locked=state.officeLevel<w.level,full=state.hired.length>=employeeCap[state.officeLevel-1],affordable=state.assets>=price;
+      button.textContent=owned?'고용됨':locked?'잠김':full?'정원 마감':!affordable?'자산 부족':'₩'+money(price)+'M 고용';
       button.disabled=owned||locked||full||!affordable;
       if(locked)addLockIcon(button,w.level);
       button.onclick=()=>{
-        state.assets-=w.cost;state.hired.push(w.id);state.staff[w.id]={level:1,xp:0};
+        state.assets=roundMoney(state.assets-price);state.hired.push(w.id);state.staff[w.id]=state.staff[w.id]||{level:1,xp:0};
         const cell=firstFreeCell();if(cell)state.placed.push({id:w.id,...cell});
         save();render();showHire(page);toast(w.name+' 고용 완료!');
       };
