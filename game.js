@@ -411,7 +411,7 @@
   };
   const showAccount = async (mode='login') => {
     const cloud=window.atelierCloud;
-    if(cloud?.ready)await cloud.ready();
+    if(cloud?.ready)try{await cloud.ready();}catch{}
     if(!cloud?.isConfigured()){
       showModal('<span class="modal-kicker">ATELIER ACCOUNT</span><h2 id="modalTitle">계정 저장 준비 중</h2><p>Firebase 프로젝트 연결을 마치면 로그인과 기기 간 저장을 사용할 수 있어요. 지금은 기기 저장을 사용할 수 있습니다.</p><button class="modal-primary" id="localInstead" type="button">기기 저장하기</button>');
       $('localInstead').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기에 저장했어요.');};
@@ -808,7 +808,7 @@
   };
   const showResearch = (category='소재') => {
     if(!researchProjects[category])category='소재';
-    showModal('<span class="modal-kicker">DISCOVERY</span><h2 id="modalTitle">연구</h2><p>연구 포인트 '+state.research+'P · 연구한 항목은 컬렉션 제작에 적용됩니다.</p><div class="section-tabs" id="researchTabs" role="tablist" aria-label="연구 분야"></div><div id="researchRows" role="tabpanel"></div><h3>최근 컬렉션</h3><div id="historyRows"></div>');
+    showModal('<span class="modal-kicker">DISCOVERY</span><h2 id="modalTitle">연구</h2><p>연구 포인트 '+state.research+'P · 연구한 항목은 컬렉션 제작에 적용됩니다.</p><div class="section-tabs" id="researchTabs" role="tablist" aria-label="연구 분야"></div><div id="researchRows" role="tabpanel"></div>');
     Object.keys(researchProjects).forEach(name=>{
       const button=document.createElement('button');button.type='button';button.textContent=name;button.setAttribute('role','tab');
       button.setAttribute('aria-selected',String(name===category));button.className=name===category?'active':'';
@@ -823,6 +823,9 @@
       button.onclick=()=>{if(has(project.id)||state.research<project.cost)return;state.research-=project.cost;state.unlocks.push(project.id);save();showResearch(category);toast(project.name+' 연구 완료!');};
       row.append(body,button);$('researchRows').append(row);
     });
+  };
+  const showCollections = () => {
+    showModal('<span class="modal-kicker">COLLECTION ARCHIVE</span><h2 id="modalTitle">컬렉션</h2><p>최근 출시한 컬렉션 '+state.history.length+'개를 확인할 수 있어요.</p><div id="historyRows"></div>');
     if(!state.history.length)$('historyRows').textContent='아직 출시한 컬렉션이 없습니다.';
     state.history.forEach(h=>{
       const row=document.createElement('div');row.className='report-line';
@@ -922,8 +925,8 @@
   $('menuFurniture').onclick=()=>{setMenu(false);showFurniture(0);};
   $('menuLoan').onclick=()=>{setMenu(false);showLoan();};
   $('officeRepayButton').onclick=()=>showLoan(true);
-  $('menuAccount').onclick=()=>{setMenu(false);showAccount();};
-  $('menuSave').onclick=()=>{setMenu(false);showSaveInfo();};
+  $('menuAccount').onclick=()=>{setMenu(false);showSaveInfo();};
+  $('menuCollection').onclick=()=>{setMenu(false);showCollections();};
   $('startSignIn').onclick=()=>showAccount();
   $('startForm').addEventListener('submit',event=>{
     event.preventDefault();
