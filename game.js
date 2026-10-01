@@ -162,7 +162,7 @@
   const currentMonth=()=>((2+state.monthsElapsed)%12)+1;
   const calendarYear=()=>1+Math.floor((2+state.monthsElapsed)/12);
   const currentTrend=()=>trends[(Math.floor(state.monthsElapsed/3)%4)+4*(Math.floor(state.monthsElapsed/12)%2)];
-  const isFashionWeekMonth=()=>((state.monthsElapsed+1)%4===0);
+  const isFashionWeekMonth=()=>currentMonth()%3===0;
   const MAX_PRODUCTION_STAFF=4,MAX_YEARLY_PRODUCTIONS=5;
   const participationCount=(id,year=calendarYear())=>{
     const member=state.staff[id];
