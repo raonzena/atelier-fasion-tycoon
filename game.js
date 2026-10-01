@@ -775,8 +775,6 @@
   const menu = $('gameMenu'),toggle = $('menuToggle');
   const setMenu = open => {menu.hidden=!open;toggle.setAttribute('aria-expanded',String(open));};
   toggle.onclick=()=>setMenu(menu.hidden);
-  toggle.addEventListener('mouseenter',()=>setMenu(true));
-  menu.addEventListener('mouseleave',()=>setMenu(false));
   document.addEventListener('click',event=>{if(!menu.contains(event.target)&&event.target!==toggle)setMenu(false);});
   $('menuHire').onclick=()=>{setMenu(false);showHire(0);};
   $('menuFurniture').onclick=()=>{setMenu(false);showFurniture(0);};
