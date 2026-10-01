@@ -607,7 +607,8 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .room-world .piece img{object-position:center bottom;top:auto}
 .room-world .piece.worker img{bottom:42%}
 .room-world .piece.furniture img{bottom:38%;transform-origin:50% 100%}
-.room-world .piece.wide-furniture img{bottom:36%}
-.room-world .piece.wide-furniture.kind-longRack img{bottom:34%}
-.room-world .piece.wide-furniture.kind-breakroom img{bottom:42%}
+.room-world .piece.wide-furniture img{bottom:40%}
+.room-world .piece.wide-furniture.kind-longRack img{bottom:41%}
+.room-world .piece.wide-furniture.kind-breakroom img{bottom:50%}
+.room-world .piece.wide-furniture.kind-largePhoto img{bottom:28%}
 .room-world .piece .piece-label{top:calc(50% + 8px)}
