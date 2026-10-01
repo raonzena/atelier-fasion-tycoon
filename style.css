@@ -577,6 +577,9 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .fire-action{color:#a64359;border-color:#e4a9ae}
 .fire-confirm{background:#b45168}
 @media(max-width:680px){.office-payroll{font-size:9px;line-height:1.2}.office-payroll strong{font-size:11px}}
+.room-world .piece.wide-furniture{width:calc(var(--piece-size,10%) * 1.8)}
+.room-world .piece.wide-furniture img{width:120%;left:-10%;height:185%;bottom:48%}
+@media(max-width:680px){.room-world .piece.wide-furniture{width:calc(var(--piece-size-mobile,var(--piece-size,10%)) * 1.7)}}
 .section-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
 .section-tabs button{flex:1 1 70px;min-width:0;padding:10px 8px;border:1px solid #e8c7c2;border-radius:9px;background:#fff6ed;color:#735261;font:inherit;font-weight:750;cursor:pointer}
 .section-tabs button.active{background:#bd7083;color:#fff;border-color:#bd7083}
