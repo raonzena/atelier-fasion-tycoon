@@ -389,14 +389,23 @@
     });
     update();$('confirmLaunch').onclick=()=>beginProduction(choices,assigned);
   };
+  const productionMessages = [
+    '열심히 제작 중이에요',
+    '새 컬렉션을 완성하고 있어요',
+    '디자인을 다듬고 있어요',
+    '한 땀씩 만들어 가고 있어요',
+    '마지막 디테일을 살펴봐요',
+    '패션 아이디어가 옷이 되고 있어요'
+  ];
   const beginProduction = (choices,assigned) => {
     if(isProducing)return;
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
     const [chance,,totals,goal]=successChance(choices,assigned);
     const outcome=collectionTrial(assigned,goal);
     const target=outcome.success?100:Math.min(chance,99);
+    let messageIndex=Math.floor(Math.random()*productionMessages.length);
     isProducing=true;
-    showModal('<span class="modal-kicker">COLLECTION IN PROGRESS</span><h2 id="modalTitle" tabindex="-1">고양이 팀이 제작 중이에요</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>제작 진행도 · 예상 성공률 '+chance+'% · 합산 목표 '+goal+'</p><div class="production-stats">'+statLabels.map(([key,label])=>'<div><span>'+label+'</span><strong id="production-'+key+'">0 / '+totals[key]+'</strong><div class="production-stat-track"><i id="production-fill-'+key+'"></i></div></div>').join('')+'</div><div class="production-studio" role="img" aria-label="고양이들이 패션 사무실에서 디자인하고 재봉하고 의상을 정리하는 장면"><img data-skeleton src="./assets/production-studio.webp" alt="" decoding="async"></div></div>');
+    showModal('<span class="modal-kicker">COLLECTION IN PROGRESS</span><h2 id="modalTitle" tabindex="-1">'+productionMessages[messageIndex]+'</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>제작 진행도 · 예상 성공률 '+chance+'% · 합산 목표 '+goal+'</p><div class="production-stats">'+statLabels.map(([key,label])=>'<div><span>'+label+'</span><strong id="production-'+key+'">0 / '+totals[key]+'</strong><div class="production-stat-track"><i id="production-fill-'+key+'"></i></div></div>').join('')+'</div><div class="production-studio" role="img" aria-label="고양이들이 패션 사무실에서 디자인하고 재봉하고 의상을 정리하는 장면"><img data-skeleton src="./assets/production-studio.webp" alt="" decoding="async"></div></div>');
     $('modalTitle').focus();
     const renderProgress=progress=>{
       const eased=1-Math.pow(1-progress,3);
@@ -407,6 +416,10 @@
       }
     };
     const reduced=typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const messageTimer=reduced?null:setInterval(()=>{
+      messageIndex=(messageIndex+1+Math.floor(Math.random()*(productionMessages.length-1)))%productionMessages.length;
+      $('modalTitle').textContent=productionMessages[messageIndex];
+    },700);
     if(reduced)renderProgress(1);
     else {
       const start=performance.now(),duration=1600;
@@ -417,7 +430,7 @@
       };
       requestAnimationFrame(tick);
     }
-    setTimeout(()=>{isProducing=false;launch(choices,assigned,outcome);},reduced?250:2250);
+    setTimeout(()=>{if(messageTimer)clearInterval(messageTimer);isProducing=false;launch(choices,assigned,outcome);},reduced?250:2250);
   };
   const changeCard = (label,delta,previous,unit) => {
     const direction=delta>0?'up':delta<0?'down':'flat';
