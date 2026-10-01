@@ -56,6 +56,7 @@ const queueSave = state => {
 
 window.atelierCloud = {
   isConfigured:()=>configured,
+  isGoogleEnabled:()=>Boolean(config?.googleEnabled),
   isSignedIn:()=>Boolean(activeUser),
   status:()=>({user:activeUser,label:activeUser?.email || activeUser?.displayName || '로그인 계정',sync}),
   errorMessage,
