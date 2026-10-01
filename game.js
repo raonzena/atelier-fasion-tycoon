@@ -98,20 +98,25 @@
   const styles = ['미니멀','스트리트','클래식','러블리','아웃도어'];
   const targets = ['20대 직장인','10대 학생','아웃도어 고객'];
   const initial = () => ({
-    layoutVersion:5,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
+    layoutVersion:5,calendarStartMonth:1,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
     research:0,unlocks:[],researchTasks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
   const hydrate = saved => {
     if(saved && saved.officeLevel >= 1 && saved.officeLevel <= OFFICE_MAX && Array.isArray(saved.placed)) {
       const loaded = {...initial(),...saved,localSave:true};
-      // Before the calendar change, every release advanced one full season.
-      loaded.monthsElapsed=Number.isInteger(saved.monthsElapsed)&&saved.monthsElapsed>=0?saved.monthsElapsed:saved.releases*3;
+      // Old saves began in March. Shift their elapsed months so their displayed
+      // date, year and research time remaining stay the same after January start.
+      const monthOffset=saved.calendarStartMonth===1?0:2;
+      loaded.monthsElapsed=(Number.isInteger(saved.monthsElapsed)&&saved.monthsElapsed>=0?saved.monthsElapsed:saved.releases*3)+monthOffset;
+      loaded.calendarStartMonth=1;
       loaded.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(loaded.releases/2));
       loaded.staff = saved.staff || {};
       loaded.unlocks = Array.isArray(saved.unlocks) ? saved.unlocks : [];
       loaded.researchTasks = Array.isArray(saved.researchTasks) ? saved.researchTasks.filter(task=>
-        task&&typeof task.id==='string'&&Number.isInteger(task.finishMonth)&&task.finishMonth>loaded.monthsElapsed&&!loaded.unlocks.includes(task.id)
+        task&&typeof task.id==='string'&&Number.isInteger(task.finishMonth)
+      ).map(task=>({...task,finishMonth:task.finishMonth+monthOffset})).filter(task=>
+        task.finishMonth>loaded.monthsElapsed&&!loaded.unlocks.includes(task.id)
       ) : [];
       loaded.history = Array.isArray(saved.history) ? saved.history : [];
       loaded.hired = Array.isArray(saved.hired) ? saved.hired : workers.filter(w => saved.placed.some(p => p.id===w.id)).map(w => w.id);
@@ -159,9 +164,14 @@
   };
   try { state=hydrate(JSON.parse(localStorage.getItem('atelier-device-save') || 'null')); } catch {}
   let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTiles=[],eventVenueActive=false,eventVenueSeason=null;
-  const currentMonth=()=>((2+state.monthsElapsed)%12)+1;
-  const calendarYear=()=>1+Math.floor((2+state.monthsElapsed)/12);
-  const currentTrend=()=>trends[(Math.floor(state.monthsElapsed/3)%4)+4*(Math.floor(state.monthsElapsed/12)%2)];
+  const currentMonth=()=>state.monthsElapsed%12+1;
+  const calendarYear=()=>1+Math.floor(state.monthsElapsed/12);
+  const currentTrend=()=>{
+    const month=currentMonth(),season=Math.floor(((month+9)%12)/3);
+    // December, January and February share the same winter trend across New Year.
+    const springYear=calendarYear()-(month<3?1:0);
+    return trends[season+4*((springYear+1)%2)];
+  };
   const isFashionWeekMonth=()=>currentMonth()%3===0;
   const MAX_PRODUCTION_STAFF=4,MAX_YEARLY_PRODUCTIONS=5;
   const participationCount=(id,year=calendarYear())=>{

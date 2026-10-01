@@ -21,11 +21,12 @@ vm.runInContext(source.slice(trendStart,trendEnd)+source.slice(calendarStart,cal
   '\nthis.api={currentMonth,calendarYear,currentTrend,isFashionWeekMonth,officeRequiredReleases,judgeFashionWeek};',context);
 const api=context.api;
 for(const [elapsed,month,year,season,event] of [
-  [0,3,1,'봄',true],[1,4,1,'봄',false],[2,5,1,'봄',false],
-  [3,6,1,'여름',true],[4,7,1,'여름',false],[5,8,1,'여름',false],
-  [6,9,1,'가을',true],[7,10,1,'가을',false],[8,11,1,'가을',false],
-  [9,12,1,'겨울',true],[10,1,2,'겨울',false],[11,2,2,'겨울',false],
-  [12,3,2,'봄',true]
+  [0,1,1,'겨울',false],[1,2,1,'겨울',false],
+  [2,3,1,'봄',true],[3,4,1,'봄',false],[4,5,1,'봄',false],
+  [5,6,1,'여름',true],[6,7,1,'여름',false],[7,8,1,'여름',false],
+  [8,9,1,'가을',true],[9,10,1,'가을',false],[10,11,1,'가을',false],
+  [11,12,1,'겨울',true],[12,1,2,'겨울',false],[13,2,2,'겨울',false],
+  [14,3,2,'봄',true]
 ]) {
   context.state.monthsElapsed=elapsed;
   assert.equal(api.currentMonth(),month);
@@ -33,6 +34,14 @@ for(const [elapsed,month,year,season,event] of [
   assert.equal(api.currentTrend().season,season);
   assert.equal(api.isFashionWeekMonth(),event);
 }
+context.state.monthsElapsed=11;
+const decemberTrend=api.currentTrend();
+context.state.monthsElapsed=12;
+assert.equal(api.currentTrend(),decemberTrend);
+context.state.monthsElapsed=2;
+assert.equal(api.currentTrend().item,'셔츠');
+context.state.monthsElapsed=14;
+assert.equal(api.currentTrend().item,'원피스');
 assert.equal(api.officeRequiredReleases(1),2);
 assert.equal(api.officeRequiredReleases(11),22);
 

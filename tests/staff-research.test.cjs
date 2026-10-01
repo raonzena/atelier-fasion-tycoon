@@ -9,7 +9,7 @@ const research=source.slice(source.indexOf('  const researchDiscount='),source.i
 const unlocks=new Set();
 const context={
   state:{monthsElapsed:0,staff:{yuna:{productionYear:1,productionCount:5}}},
-  trends:[{season:'봄',style:'미니멀',item:'셔츠',target:'20대 직장인'}],
+  trends:Array.from({length:8},()=>({season:'봄',style:'미니멀',item:'셔츠',target:'20대 직장인'})),
   has:key=>unlocks.has(key),
   unlockedOptions:()=>[],
   weightedStats:()=>20
@@ -20,7 +20,7 @@ vm.runInContext(calendar+research+'\nthis.api={calendarYear,participationCount,r
 assert.equal(context.api.participationCount('yuna'),5);
 assert.equal(context.api.remainingParticipations('yuna'),0);
 assert.equal(context.api.participationCount('newStaff'),0);
-context.state.monthsElapsed=10; // January of the next game year.
+context.state.monthsElapsed=12; // January of the next game year.
 assert.equal(context.api.calendarYear(),2);
 assert.equal(context.api.participationCount('yuna'),0);
 assert.equal(context.api.remainingParticipations('yuna'),5);
