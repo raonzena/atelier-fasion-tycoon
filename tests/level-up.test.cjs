@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-const source = fs.readFileSync(path.join(__dirname, '../dist/game.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '../game.js'), 'utf8');
 const start = source.indexOf('  const levelChange =');
 const end = source.indexOf('  const animateLevelChanges =', start);
 assert(start > 0 && end > start);
@@ -24,10 +24,10 @@ assert.match(panel,/새 작업실/);
 
 const widthMatch=source.match(/const officeArtworkWidth=level=>([^;]+);/);
 assert(widthMatch);
-const officeArtworkWidth=vm.runInNewContext('level=>'+widthMatch[1]);
+const officeArtworkWidth=vm.runInNewContext('level=>'+widthMatch[1], {OFFICE_MAX:12});
 assert.equal(officeArtworkWidth(1),58);
-assert.equal(officeArtworkWidth(10),100);
-for(const level of [1,4,8,10]){
+assert.equal(officeArtworkWidth(12),100);
+for(const level of [1,4,8,10,12]){
   const width=officeArtworkWidth(level);
   assert(Math.abs(width*(700/width)/100-7)<1e-9);
   assert(Math.abs(width*(840/width)/100-8.4)<1e-9);

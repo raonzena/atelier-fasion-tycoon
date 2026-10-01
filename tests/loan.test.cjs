@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-const source = fs.readFileSync(path.join(__dirname, '../dist/game.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '../game.js'), 'utf8');
 const start = source.indexOf('  const roundMoney =');
 const end = source.indexOf('  const toast =', start);
 assert(start > 0 && end > start, 'loan calculation block exists');
@@ -16,8 +16,10 @@ const {loanLimit,loanRate,loanBalance,availableLoan,borrowLoan,repayLoan,accrueL
 
 assert.equal(loanLimit(1), 60);
 assert.equal(loanLimit(10), 420);
+assert.equal(loanLimit(12), 500);
 assert.equal(Number(loanRate(1).toFixed(3)), .08);
 assert.equal(Number(loanRate(10).toFixed(3)), .035);
+assert.equal(Number(loanRate(12).toFixed(3)), .025);
 assert.equal(availableLoan(), 60);
 assert.equal(borrowLoan(61), false);
 assert.equal(borrowLoan(1.5), false);

@@ -22,6 +22,8 @@ let animations = 0;
 const context = {
   $: id => elements[id],
   isProducing: false,
+  eventVenueActive: false,
+  render: () => {},
   animateLevelChanges: () => {animations++;}
 };
 vm.createContext(context);

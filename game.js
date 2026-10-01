@@ -39,7 +39,7 @@
   };
   const warmArtwork = () => {
     if (typeof Image === 'undefined') return;
-    const paths = ['office-mid.webp','office-high.webp','cats-disappointed.webp','production-studio.webp'];
+    const paths = ['office-mid.webp','office-high.webp','cats-disappointed.webp','production-studio.webp','fashion-week.webp'];
     for (const name of paths) { const preview = new Image(); preview.src = './assets/' + name; }
   };
   if (typeof window !== 'undefined' && window.addEventListener) {
@@ -49,17 +49,18 @@
     }, {once:true});
   }
   // Each larger office layout adds staff capacity on top of its level.
-  const employeeCap = Array.from({length:10},(_,index)=>{
+  const OFFICE_MAX=12,COMPANY_MAX=12;
+  const employeeCap = Array.from({length:OFFICE_MAX},(_,index)=>{
     const level=index+1;
     return level+(level>=8?3:level>=4?2:1);
   });
-  const furnitureCap = [2,3,4,5,6,7,8,9,10,11];
+  const furnitureCap = [2,3,4,5,6,7,8,9,10,11,12,13];
   const furniturePrice = {designDesk:18,sewingDesk:22,rack:16,photo:30,moodboard:26,lounge:36};
-  const offices = ['낡은 원룸 사무실','정돈된 작업실','첫 번째 스튜디오','창가 작업실','성장하는 아틀리에','넓어진 디자인실','브랜드 본사','도심 패션 스튜디오','프리미엄 오피스','글로벌 패션 하우스'];
-  const gridSizes=[3,4,4,5,5,6,6,7,7,8];
+  const offices = ['낡은 원룸 사무실','정돈된 작업실','첫 번째 스튜디오','창가 작업실','성장하는 아틀리에','넓어진 디자인실','브랜드 본사','도심 패션 스튜디오','프리미엄 오피스','글로벌 패션 하우스','국제 컬렉션 스튜디오','월드 아틀리에'];
+  const gridSizes=[3,4,4,5,5,6,6,7,7,8,8,8];
   const bounds=gridSizes.map(n=>[0,n-1,0,n-1]);
   const gridSize=()=>gridSizes[state.officeLevel-1];
-  const officeArtworkWidth=level=>58+(level-1)*42/9;
+  const officeArtworkWidth=level=>58+(level-1)*42/(OFFICE_MAX-1);
   // The painted room is slightly asymmetric: the left and right floor edges
   // have different slopes. Keep drawing and pointer hit-testing on one basis.
   const FLOOR_ORIGIN={left:54,top:28};
@@ -87,13 +88,16 @@
   const styles = ['미니멀','스트리트','클래식','러블리','아웃도어'];
   const targets = ['20대 직장인','10대 학생','아웃도어 고객'];
   const initial = () => ({
-    layoutVersion:3,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,localSave:false,
+    layoutVersion:3,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
     research:0,unlocks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
   const hydrate = saved => {
-    if(saved && saved.officeLevel >= 1 && saved.officeLevel <= 10 && Array.isArray(saved.placed)) {
+    if(saved && saved.officeLevel >= 1 && saved.officeLevel <= OFFICE_MAX && Array.isArray(saved.placed)) {
       const loaded = {...initial(),...saved,localSave:true};
+      // Before the calendar change, every release advanced one full season.
+      loaded.monthsElapsed=Number.isInteger(saved.monthsElapsed)&&saved.monthsElapsed>=0?saved.monthsElapsed:saved.releases*3;
+      loaded.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(loaded.releases/2));
       loaded.staff = saved.staff || {};
       loaded.unlocks = Array.isArray(saved.unlocks) ? saved.unlocks : [];
       loaded.history = Array.isArray(saved.history) ? saved.history : [];
@@ -123,7 +127,12 @@
     return initial();
   };
   try { state=hydrate(JSON.parse(localStorage.getItem('atelier-device-save') || 'null')); } catch {}
-  let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTile=null;
+  let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTile=null,eventVenueActive=false;
+  const currentMonth=()=>((2+state.monthsElapsed)%12)+1;
+  const calendarYear=()=>1+Math.floor((2+state.monthsElapsed)/12);
+  const currentTrend=()=>trends[(Math.floor(state.monthsElapsed/3)%4)+4*(Math.floor(state.monthsElapsed/12)%2)];
+  const isFashionWeekMonth=()=>((state.monthsElapsed+1)%4===0);
+  const officeRequiredReleases=level=>level*2;
   const definition = id => items.find(i => i.id === id) || furniture.find(i => state.ownedFurniture.some(o => o.id === id && o.kind === i.id));
   const itemName = id => {const d=definition(id);return d ? d.name : '알 수 없는 물건';};
   const hiredWorkers = () => workers.filter(w => state.hired.includes(w.id));
@@ -283,28 +292,30 @@
     if(!ownedItems().length)$('inventoryItems').textContent='직원을 고용하거나 가구를 구매하면 이곳에서 배치할 수 있어요.';
   };
   const render = () => {
-    $('companyLevel').textContent=state.companyLevel;
+    $('companyLevel').textContent=state.companyLevel>=COMPANY_MAX?'Max':state.companyLevel;
     $('assetValue').textContent='₩'+money(state.assets)+'M';
     $('customerValue').textContent=state.customers.toLocaleString()+'명';
     $('officeTitle').textContent=offices[state.officeLevel-1];
-    $('officeLevel').textContent='오피스 LV. '+state.officeLevel+' / 10';
+    $('officeLevel').textContent='오피스 LV. '+state.officeLevel+' / '+OFFICE_MAX;
     const debt=loanBalance();
     $('officeLoan').hidden=debt===0;
     if(debt){
       $('officeLoanBalance').textContent='₩'+money(debt)+'M';
       $('officeLoanRate').textContent=(loanRate(state.companyLevel)*100).toFixed(1)+'%';
     }
-    $('year').textContent=1+Math.floor(state.releases/4);
-    const trend=trends[state.releases%trends.length];
+    $('year').textContent=calendarYear();
+    $('month').textContent=currentMonth();
+    const trend=currentTrend();
     $('season').textContent=trend.season;
     $('trend').textContent='트렌드 · '+trend.style+' '+trend.item;
+    $('eventNotice').hidden=!isFashionWeekMonth();
     const worldWidth=officeArtworkWidth(state.officeLevel);
-    $('roomWorld').style.width=worldWidth+'%';
+    $('roomWorld').style.width=eventVenueActive?'100%':worldWidth+'%';
     // The painted office expands, but sprites and their hit targets keep the same screen size.
     $('roomWorld').style.setProperty('--piece-size',700/worldWidth+'%');
     $('roomWorld').style.setProperty('--piece-size-mobile',840/worldWidth+'%');
     const backdrop=$('roomBackdrop');
-    const artwork=(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+'.webp';
+    const artwork=eventVenueActive?'fashion-week.webp':(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+'.webp';
     if(backdrop.dataset.artwork!==artwork){
       backdrop.dataset.artwork=artwork;
       backdrop.classList.add('image-loading');
@@ -318,6 +329,8 @@
     }
     backdrop.style.filter='saturate('+(1+state.officeLevel*.014)+') brightness('+(1+state.officeLevel*.006)+')';
     $('companyNameBrand').textContent=state.companyName||'ATELIER';
+    $('scene').classList.toggle('fashion-week-mode',eventVenueActive);
+    $('scene').setAttribute('aria-label',eventVenueActive?'패션위크 런웨이 행사장':'배치 가능한 회사 사무실');
     $('scene').classList.toggle('editing',editMode);
     $('inventory').hidden=!editMode;
     $('editButton').classList.toggle('active',editMode);
@@ -347,6 +360,7 @@
       return;
     }
     $('modalLayer').hidden=true;$('modalContent').replaceChildren();
+    if(eventVenueActive){eventVenueActive=false;render();}
   };
   const showModal = html => {
     $('modalContent').innerHTML=html;
@@ -415,7 +429,7 @@
   const showLoan = (focusRepayment=false) => {
     const limit=loanLimit(state.companyLevel),available=availableLoan(),balance=loanBalance();
     const repayMax=roundMoney(Math.min(state.assets,balance));
-    showModal('<span class="modal-kicker">ATELIER FINANCE</span><h2 id="modalTitle">대출 관리</h2><p>회사 LV.'+state.companyLevel+' · 컬렉션을 출시할 때마다 남은 원금에 시즌 이자가 붙습니다. 미납 이자에는 이자가 붙지 않아요.</p><div class="loan-summary"><div><span>원금 한도</span><strong>₩'+money(limit)+'M</strong></div><div><span>현재 이자율</span><strong>'+ (loanRate(state.companyLevel)*100).toFixed(1)+'%</strong></div><div><span>남은 원금</span><strong>₩'+money(state.loan.principal)+'M</strong></div><div><span>미납 이자</span><strong>₩'+money(state.loan.interestDue)+'M</strong></div><div><span>총 상환액</span><strong>₩'+money(balance)+'M</strong></div><div><span>추가 대출 가능</span><strong>₩'+money(available)+'M</strong></div></div><p class="loan-note">회사 레벨마다 한도 +₩40M, 이자율 −0.5%p · 중간 상환은 이자부터 차감됩니다. 다음 출시에는 현재 회사 레벨의 이자율이 적용돼요.</p><form id="borrowForm" class="loan-form"><label for="borrowAmount">대출 금액 (₩M)</label><div><input id="borrowAmount" type="number" min="1" max="'+available+'" step="1" inputmode="numeric" required placeholder="1 ~ '+available+'" '+(available?'':'disabled')+'><button type="submit" '+(available?'':'disabled')+'>대출하기</button></div></form><form id="repayForm" class="loan-form"><label for="repayAmount">중간 상환 금액 (₩M)</label><div><input id="repayAmount" type="number" min="0.1" max="'+repayMax+'" step="0.1" inputmode="decimal" required placeholder="최대 '+money(repayMax)+'" '+(repayMax>=.1?'':'disabled')+'><button type="submit" '+(repayMax>=.1?'':'disabled')+'>일부 상환</button></div></form><button id="repayAll" class="loan-repay-all" type="button" '+(balance>0&&state.assets>=balance?'':'disabled')+'>전액 상환 · ₩'+money(balance)+'M</button>');
+    showModal('<span class="modal-kicker">ATELIER FINANCE</span><h2 id="modalTitle">대출 관리</h2><p>회사 LV.'+state.companyLevel+' · 컬렉션을 출시할 때마다 남은 원금에 월 이자가 붙습니다. 미납 이자에는 이자가 붙지 않아요.</p><div class="loan-summary"><div><span>원금 한도</span><strong>₩'+money(limit)+'M</strong></div><div><span>현재 월 이자율</span><strong>'+ (loanRate(state.companyLevel)*100).toFixed(1)+'%</strong></div><div><span>남은 원금</span><strong>₩'+money(state.loan.principal)+'M</strong></div><div><span>미납 이자</span><strong>₩'+money(state.loan.interestDue)+'M</strong></div><div><span>총 상환액</span><strong>₩'+money(balance)+'M</strong></div><div><span>추가 대출 가능</span><strong>₩'+money(available)+'M</strong></div></div><p class="loan-note">회사 레벨마다 한도 +₩40M, 월 이자율 −0.5%p · 중간 상환은 이자부터 차감됩니다. 다음 출시에는 현재 회사 레벨의 이자율이 적용돼요.</p><form id="borrowForm" class="loan-form"><label for="borrowAmount">대출 금액 (₩M)</label><div><input id="borrowAmount" type="number" min="1" max="'+available+'" step="1" inputmode="numeric" required placeholder="1 ~ '+available+'" '+(available?'':'disabled')+'><button type="submit" '+(available?'':'disabled')+'>대출하기</button></div></form><form id="repayForm" class="loan-form"><label for="repayAmount">중간 상환 금액 (₩M)</label><div><input id="repayAmount" type="number" min="0.1" max="'+repayMax+'" step="0.1" inputmode="decimal" required placeholder="최대 '+money(repayMax)+'" '+(repayMax>=.1?'':'disabled')+'><button type="submit" '+(repayMax>=.1?'':'disabled')+'>일부 상환</button></div></form><button id="repayAll" class="loan-repay-all" type="button" '+(balance>0&&state.assets>=balance?'':'disabled')+'>전액 상환 · ₩'+money(balance)+'M</button>');
     $('borrowForm').onsubmit=event=>{
       event.preventDefault();const amount=Number($('borrowAmount').value);
       if(!borrowLoan(amount)){toast('대출 가능 금액을 확인해 주세요.');return;}
@@ -484,8 +498,21 @@
     const rolls=rollStats(assigned,random),score=weightedStats(rolls);
     return {rolls,score,goal,success:score>=goal};
   };
+  const runwayPrizes={1:3000,2:1000,3:500};
+  const rivalBrands=['달빛 테일러','코튼 클럽','루미에르 스튜디오','멜로우 라인','버터플라이 라벨'];
+  const judgeFashionWeek = (rolls,random=Math.random) => {
+    // Three strong rivals establish meaningful minimum scores for the podium.
+    const scores=[30+random()*12,22+random()*10,14+random()*10,12+random()*11,8+random()*11];
+    const names=[...rivalBrands];
+    for(let i=names.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[names[i],names[j]]=[names[j],names[i]];}
+    const competitors=scores.map((score,i)=>({name:names[i],score:Number(score.toFixed(1)),player:false}));
+    const playerScore=Number(weightedStats(rolls).toFixed(1));
+    const podium=[...competitors,{name:state.companyName||'우리 회사',score:playerScore,player:true}].sort((a,b)=>b.score-a.score).slice(0,3);
+    const rank=podium.findIndex(entry=>entry.player)+1;
+    return {score:playerScore,podium,rank,prize:runwayPrizes[rank]||0};
+  };
   const successChance = (choices,assigned) => {
-    const trend=trends[state.releases%trends.length];
+    const trend=currentTrend();
     const matches=Number(choices.target===trend.target)+Number(choices.item===trend.item)+Number(choices.style===trend.style);
     const material=choices.material==='리넨'&&trend.season==='여름'||choices.material==='재생 원단'&&choices.style==='아웃도어';
     const totals=teamStats(assigned),goal=collectionGoal(teamStats(assigned,true),matches,material);
@@ -496,16 +523,25 @@
     for(let i=0;i<384;i++)if(collectionTrial(assigned,goal,sample).success)wins++;
     return [Math.round(wins/384*100),matches,totals,goal];
   };
-  const showLaunch = () => {
+  const showLaunch = (mode=null) => {
     if(!state.hired.length){toast('먼저 직원을 고용하세요.');return;}
     if(state.assets<38){toast('제작비 ₩38M이 필요해요.');return;}
-    const trend=trends[state.releases%trends.length];
+    if(isFashionWeekMonth()&&mode===null){
+      showModal('<span class="modal-kicker">FASHION WEEK · '+calendarYear()+'년 '+currentMonth()+'월</span><h2 id="modalTitle">이달은 패션위크!</h2><div class="fashion-week-preview"><img data-skeleton src="./assets/fashion-week.webp" alt="고양이 모델과 관객들이 모인 패션위크 런웨이"></div><p>참가하면 디자인·봉제·트렌드 감각·생산 효율의 실제 제작 점수로 다른 브랜드와 순위를 겨룹니다. 1위 ₩3,000M · 2위 ₩1,000M · 3위 ₩500M.</p><p class="runway-rule">입상하려면 네 능력의 가중 합계가 최소 14점이어야 해요. 참가하지 않아도 이번 달 컬렉션을 평소처럼 제작할 수 있어요.</p><button class="modal-primary" id="joinFashionWeek" type="button">패션위크 참가하기</button><button class="account-secondary" id="skipFashionWeek" type="button">일반 컬렉션 제작</button>');
+      $('joinFashionWeek').onclick=()=>showLaunch('fashionWeek');
+      $('skipFashionWeek').onclick=()=>showLaunch('regular');
+      return;
+    }
+    const fashionWeek=mode==='fashionWeek'&&isFashionWeekMonth();
+    eventVenueActive=fashionWeek;
+    if(fashionWeek)render();
+    const trend=currentTrend();
     const choices={target:trend.target,item:baseCategories.includes(trend.item)?trend.item:'티셔츠',style:trend.style,material:'면'};
     const assigned=Object.fromEntries(hiredWorkers().map(w=>[w.id,true]));
-    showModal('<span class="modal-kicker">NEW COLLECTION · '+trend.season+'</span><h2 id="modalTitle">다음 컬렉션 기획</h2><p>제작비 ₩38M · 이번 시즌의 시장 흐름과 팀 능력치를 고려하세요.</p><div id="choices"></div><div class="choice-group"><strong>제작에 배정할 직원</strong><div id="staffChoices" class="staff-choices"></div></div><div id="chancePreview" class="chance-preview"></div><button class="modal-primary" id="confirmLaunch" type="button">제작하고 출시하기</button>');
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RUNWAY':'NEW COLLECTION')+' · '+trend.season+' '+currentMonth()+'월</span><h2 id="modalTitle">'+(fashionWeek?'패션위크 컬렉션 기획':'다음 컬렉션 기획')+'</h2>'+(fashionWeek?'<div class="fashion-week-preview compact"><img data-skeleton src="./assets/fashion-week.webp" alt="패션위크 런웨이 행사장"></div>':'')+'<p>제작비 ₩38M · 이번 시즌의 시장 흐름과 팀 능력치를 고려하세요.</p><div id="choices"></div><div class="choice-group"><strong>제작에 배정할 직원</strong><div id="staffChoices" class="staff-choices"></div></div><div id="chancePreview" class="chance-preview"></div><button class="modal-primary" id="confirmLaunch" type="button">'+(fashionWeek?'제작하고 런웨이 참가':'제작하고 출시하기')+'</button>');
     const update=()=>{
       const result=successChance(choices,assigned);
-      $('chancePreview').textContent='예상 성공률 '+result[0]+'% · 합산 목표 '+result[3]+' · 트렌드 일치 '+result[1]+'/3 · 참여 직원 '+Object.values(assigned).filter(Boolean).length+'명';
+      $('chancePreview').textContent='예상 성공률 '+result[0]+'% · 합산 목표 '+result[3]+' · 트렌드 일치 '+result[1]+'/3 · 참여 직원 '+Object.values(assigned).filter(Boolean).length+'명'+(fashionWeek?' · 런웨이 입상 최소 14점':'');
     };
     [['target','고객',targets],['item','의류',availableItems()],['style','스타일',styles],['material','소재',availableMaterials()]].forEach(groupData=>{
       const [key,label,values]=groupData;
@@ -528,7 +564,7 @@
       const stats=document.createElement('small');stats.className='staff-choice-stats';stats.textContent=statSummary(w);
       label.append(checkbox,img,text,stats);$('staffChoices').append(label);
     });
-    update();$('confirmLaunch').onclick=()=>beginProduction(choices,assigned);
+    update();$('confirmLaunch').onclick=()=>beginProduction(choices,assigned,fashionWeek);
   };
   const productionMessages = [
     '열심히 제작 중이에요',
@@ -538,7 +574,7 @@
     '마지막 디테일을 살펴봐요',
     '패션 아이디어가 옷이 되고 있어요'
   ];
-  const beginProduction = (choices,assigned) => {
+  const beginProduction = (choices,assigned,fashionWeek=false) => {
     if(isProducing)return;
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
     const [chance,,totals,goal]=successChance(choices,assigned);
@@ -546,7 +582,7 @@
     const target=outcome.success?100:Math.min(chance,99);
     let messageIndex=Math.floor(Math.random()*productionMessages.length);
     isProducing=true;
-    showModal('<span class="modal-kicker">COLLECTION IN PROGRESS</span><h2 id="modalTitle" tabindex="-1">'+productionMessages[messageIndex]+'</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>제작 진행도 · 예상 성공률 '+chance+'% · 합산 목표 '+goal+'</p><div class="production-stats">'+statLabels.map(([key,label])=>'<div><span>'+label+'</span><strong id="production-'+key+'">0 / '+totals[key]+'</strong><div class="production-stat-track"><i id="production-fill-'+key+'"></i></div></div>').join('')+'</div><div class="production-studio" role="img" aria-label="고양이들이 패션 사무실에서 디자인하고 재봉하고 의상을 정리하는 장면"><img data-skeleton src="./assets/production-studio.webp" alt="" decoding="async"></div></div>');
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK · RUNWAY':'COLLECTION IN PROGRESS')+'</span><h2 id="modalTitle" tabindex="-1">'+productionMessages[messageIndex]+'</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>제작 진행도 · 예상 성공률 '+chance+'% · 합산 목표 '+goal+'</p><div class="production-stats">'+statLabels.map(([key,label])=>'<div><span>'+label+'</span><strong id="production-'+key+'">0 / '+totals[key]+'</strong><div class="production-stat-track"><i id="production-fill-'+key+'"></i></div></div>').join('')+'</div><div class="production-studio '+(fashionWeek?'runway-production':'')+'" role="img" aria-label="'+(fashionWeek?'고양이 모델이 참가한 패션위크 런웨이':'고양이들이 패션 사무실에서 디자인하고 재봉하고 의상을 정리하는 장면')+'"><img data-skeleton src="./assets/'+(fashionWeek?'fashion-week':'production-studio')+'.webp" alt="" decoding="async"></div></div>');
     $('modalTitle').focus();
     const renderProgress=progress=>{
       const eased=1-Math.pow(1-progress,3);
@@ -571,7 +607,7 @@
       };
       requestAnimationFrame(tick);
     }
-    setTimeout(()=>{if(messageTimer)clearInterval(messageTimer);isProducing=false;launch(choices,assigned,outcome);},reduced?250:2250);
+    setTimeout(()=>{if(messageTimer)clearInterval(messageTimer);isProducing=false;launch(choices,assigned,outcome,fashionWeek);},reduced?250:2250);
   };
   const changeCard = (label,delta,previous,unit) => {
     if(label==='자산')delta=roundMoney(delta);
@@ -610,17 +646,18 @@
     };
     requestAnimationFrame(tick);
   };
-  const launch = (choices,assigned,outcome) => {
+  const launch = (choices,assigned,outcome,fashionWeek=false) => {
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
     const previous={assets:state.assets,customers:state.customers,research:state.research};
-    const trend=trends[state.releases%trends.length];
+    const trend=currentTrend(),releaseMonth=currentMonth(),releaseYear=calendarYear();
     const [chance,matches]=successChance(choices,assigned);
+    const runway=fashionWeek?judgeFashionWeek(outcome.rolls):null;
     const success=outcome.success;
     const score=Math.max(20,Math.min(100,Math.round(65+(outcome.score/outcome.goal-1)*60+(success?8:-8))));
     const revenue=Math.round(score*(success?1.8:1.12)+state.companyLevel*4);
     const gained=Math.round((score-48)*3.7);
     const points=success?3:2;
-    state.assets=roundMoney(state.assets+revenue-38);
+    state.assets=roundMoney(state.assets+revenue-38+(runway?.prize||0));
     state.customers=Math.max(0,state.customers+gained);
     state.research+=points;
     const chargedInterest=accrueLoanInterest();
@@ -636,20 +673,21 @@
     }
     const beforeCompanyLevel=state.companyLevel;
     state.releases++;
-    state.companyLevel=Math.min(10,1+Math.floor(state.releases/2));
+    state.monthsElapsed++;
+    state.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(state.releases/2));
     const discoveries=[];
     if(state.releases===2&&!has('hoodie')){state.unlocks.push('hoodie');discoveries.push('후드티');}
     if(state.releases===5&&!has('bag')){state.unlocks.push('bag');discoveries.push('가방');}
     const reason=matches>=2?'시즌 취향과 고객 수요를 잘 맞췄습니다.':matches===1?'일부 시장 수요와 맞았지만 조합을 더 다듬을 수 있습니다.':'이번 시즌의 인기 상품·스타일·고객과 거리가 있었습니다.';
     const review=score>=75?'“다음 컬렉션도 기대돼요!”':score>=55?'“디자인은 좋지만 조금 더 고민해 볼게요.”':'“이번 시즌에는 다른 스타일을 찾고 있었어요.”';
-    state.history.unshift({name:choices.style+' '+choices.item,season:trend.season,score,revenue,review});
+    state.history.unshift({name:choices.style+' '+choices.item,season:trend.season,month:releaseMonth,year:releaseYear,score,revenue,review,fashionWeek:Boolean(runway),fashionWeekRank:runway?.rank||0,prize:runway?.prize||0});
     state.history=state.history.slice(0,8);save();render();
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
     const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.level===10&&!w.leveled?'최대 레벨':'+1 XP')+'</span></div>').join('')+'</div>';
-    const loanReport=chargedInterest?'<div class="report-line">이번 시즌 대출 이자 <strong>+₩'+money(chargedInterest)+'M · 총 상환액 ₩'+money(loanBalance())+'M</strong></div>':'';
+    const loanReport=chargedInterest?'<div class="report-line">이번 달 대출 이자 <strong>+₩'+money(chargedInterest)+'M · 총 상환액 ₩'+money(loanBalance())+'M</strong></div>':'';
     const companyLevelUp=state.companyLevel>beforeCompanyLevel?levelUpPanel('회사 LV.'+state.companyLevel+' 달성!',[
       levelChange('대출 원금 한도',loanLimit(beforeCompanyLevel),loanLimit(state.companyLevel),'M','M'),
-      levelChange('시즌 이자율',loanRate(beforeCompanyLevel)*100,loanRate(state.companyLevel)*100,'%','%p',1)
+      levelChange('월 이자율',loanRate(beforeCompanyLevel)*100,loanRate(state.companyLevel)*100,'%','%p',1)
     ],'새로운 금융 혜택이 열렸어요'):'';
     const leveledStaff=xpChanges.filter(w=>w.leveled);
     const staffLevelUp=leveledStaff.length?levelUpPanel('직원 '+leveledStaff.length+'명 레벨업!',leveledStaff.flatMap(w=>[
@@ -657,7 +695,9 @@
       ...statLabels.map(([key,label])=>levelChange(label,w.beforeStats[key],w.afterStats[key]))
     ]),'제작 경험으로 능력치가 올랐어요'):'';
     pendingLevelUp=companyLevelUp+staffLevelUp||null;
-    showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    const runwayReport=runway?'<section class="runway-report"><div class="fashion-week-preview compact"><img data-skeleton src="./assets/fashion-week.webp" alt="패션위크 런웨이"></div><h3>'+(runway.rank?runway.rank+'위 입상!':'이번 패션위크는 입상하지 못했어요')+'</h3><p>네 능력 가중 합계 '+runway.score.toFixed(1)+'점 · 최소 입상 기준 14점</p><div class="runway-stat-grid">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><ol class="runway-podium">'+runway.podium.map((entry,index)=>'<li class="'+(entry.player?'our-brand':'')+'"><span>'+ (index+1)+'위 · '+entry.name+'</span><strong>'+entry.score.toFixed(1)+'점</strong></li>').join('')+'</ol><p class="runway-prize">'+(runway.prize?'패션위크 상금 +₩'+money(runway.prize)+'M':'상금 없음 · 다음 패션위크에 다시 도전해 보세요')+'</p></section>':'';
+    const resultHero='<div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div>';
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
   const showResearch = () => {
@@ -685,8 +725,8 @@
     if(!state.history.length)$('historyRows').textContent='아직 출시한 컬렉션이 없습니다.';
     state.history.forEach(h=>{
       const row=document.createElement('div');row.className='report-line';
-      row.textContent=h.season+' · '+h.name;
-      const strong=document.createElement('strong');strong.textContent=h.score+'점 · ₩'+h.revenue+'M';
+      row.textContent=(h.year&&h.month?h.year+'년 '+h.month+'월 · ':'')+h.season+' · '+h.name+(h.fashionWeek?' · 패션위크 '+(h.fashionWeekRank?h.fashionWeekRank+'위':'미입상'):'');
+      const strong=document.createElement('strong');strong.textContent=h.score+'점 · ₩'+h.revenue+'M'+(h.prize?' + 상금 ₩'+h.prize+'M':'');
       row.append(strong);$('historyRows').append(row);
     });
   };
@@ -796,9 +836,9 @@
   });
   $('startLayer').hidden=Boolean(state.companyName);
   const showUpgrade = () => {
-    if(state.officeLevel>=10){toast('오피스 최고 레벨에 도달했어요.');return;}
+    if(state.officeLevel>=OFFICE_MAX){toast('오피스 최고 레벨에 도달했어요.');return;}
     const price=upgradePrice(state.officeLevel);
-    if(state.releases<state.officeLevel){toast('컬렉션 '+state.officeLevel+'회 출시 후 확장할 수 있어요.');return;}
+    if(state.releases<officeRequiredReleases(state.officeLevel)){toast('컬렉션 '+officeRequiredReleases(state.officeLevel)+'회 출시 후 확장할 수 있어요.');return;}
     if(state.assets-price<38){toast('확장 후 제작비 ₩38M을 남겨두어야 해요.');return;}
     const next=state.officeLevel+1;
     showModal('<span class="modal-kicker">OFFICE UPGRADE</span><h2 id="modalTitle">'+offices[next-1]+'로 확장</h2><p>비용 ₩'+price+'M을 투자하면 오피스 레벨 '+next+'가 됩니다. 배치 가능한 칸이 늘어나고 새로운 가구가 열릴 수 있어요. 기존 배치는 그대로 유지됩니다.</p><button class="modal-primary" id="confirmUpgrade" type="button">₩'+price+'M 투자하기</button>');
@@ -826,8 +866,8 @@
     };
   };
   const showOfficeInfo = () => {
-    const level=state.officeLevel,top=level===10;
-    showModal('<span class="modal-kicker">MY ATELIER · YEAR '+(1+Math.floor(state.releases/4))+'</span><h2 id="modalTitle">'+offices[level-1]+'</h2><p>오피스 LV. '+level+' / 10</p><div class="office-detail-grid"><div><span>직원 수용</span><strong>'+state.hired.length+' / '+employeeCap[level-1]+'명</strong></div><div><span>가구 배치</span><strong>'+state.ownedFurniture.length+' / '+furnitureCap[level-1]+'개</strong></div><div><span>컬렉션 출시</span><strong>'+state.releases+'회</strong></div><div><span>연구 포인트</span><strong>'+state.research+'P</strong></div></div><p class="office-upgrade-note">'+(top?'최고 레벨의 오피스입니다.':'다음 확장: ₩'+upgradePrice(level)+'M · 컬렉션 '+level+'회 출시 필요 · 확장 후 제작비 ₩38M 유지')+'</p>'+(top?'':'<button class="modal-primary" id="upgradeButton" type="button">오피스 확장하기</button>'));
+    const level=state.officeLevel,top=level===OFFICE_MAX;
+    showModal('<span class="modal-kicker">MY ATELIER · YEAR '+calendarYear()+' · '+currentMonth()+'월</span><h2 id="modalTitle">'+offices[level-1]+'</h2><p>오피스 LV. '+level+' / '+OFFICE_MAX+'</p><div class="office-detail-grid"><div><span>직원 수용</span><strong>'+state.hired.length+' / '+employeeCap[level-1]+'명</strong></div><div><span>가구 배치</span><strong>'+state.ownedFurniture.length+' / '+furnitureCap[level-1]+'개</strong></div><div><span>컬렉션 출시</span><strong>'+state.releases+'회</strong></div><div><span>확장 경험</span><strong>'+(top?'Max':state.releases+' / '+officeRequiredReleases(level)+'회')+'</strong></div><div><span>연구 포인트</span><strong>'+state.research+'P</strong></div></div><p class="office-upgrade-note">'+(top?'최고 레벨의 오피스입니다.':'다음 확장: ₩'+upgradePrice(level)+'M · 컬렉션 '+officeRequiredReleases(level)+'회 출시 필요 · 확장 후 제작비 ₩38M 유지')+'</p>'+(top?'':'<button class="modal-primary" id="upgradeButton" type="button">오피스 확장하기</button>'));
     if(!top)$('upgradeButton').onclick=showUpgrade;
   };
   const cancelLayout=()=>{

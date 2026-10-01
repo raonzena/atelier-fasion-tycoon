@@ -474,6 +474,30 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .room-world .piece{width:var(--piece-size,10%);height:var(--piece-size,10%);transition:left .18s,top .18s,width .45s,height .45s}
 @media(max-width:680px){.room-world .piece{width:var(--piece-size-mobile,12%);height:var(--piece-size-mobile,12%)}}
 
+/* The runway replaces the office scene while a fashion week entry is active. */
+.scene.fashion-week-mode .room-world{width:100%!important;height:100%;max-height:none;aspect-ratio:auto;left:50%;top:50%;border-radius:0;box-shadow:none}
+.scene.fashion-week-mode .room-backdrop{background-size:cover;background-position:center}
+.scene.fashion-week-mode .floor,.scene.fashion-week-mode .room-vignette,.scene.fashion-week-mode .placement-hint{display:none}
+.scene.fashion-week-mode .piece{display:none}
+.event-notice{display:block;margin-top:5px;padding:5px 7px;border-radius:7px;background:#ffe5a7;color:#855369;font-size:11px;font-weight:800;text-align:center}
+.event-notice[hidden]{display:none}
+.fashion-week-preview{height:clamp(175px,30vw,265px);overflow:hidden;border-radius:13px;background:#ffead9}
+.fashion-week-preview.compact{height:clamp(130px,23vw,195px);margin:8px 0}
+.fashion-week-preview img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 55%}
+.runway-rule{padding:9px 11px;border-radius:9px;background:#fff0d9;font-size:13px}
+.runway-production img{object-fit:cover;object-position:center 55%;animation:studio-at-work 1.8s ease-in-out infinite alternate}
+.runway-report{margin:15px 0;padding:11px;border:1px solid #edc3b7;border-radius:14px;background:#fff5e7}
+.runway-report h3{margin:10px 0 4px;color:#a65070;font-size:21px;text-align:center}
+.runway-report p{margin:7px 0 10px;font-size:13px;text-align:center}
+.runway-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:10px 0}
+.runway-stat-grid span{padding:7px 9px;border-radius:7px;background:#fffdf7;font-size:12px;color:#765b64}
+.runway-stat-grid strong{float:right;color:#a65070}
+.runway-podium{display:grid;gap:5px;margin:9px 0;padding:0;list-style:none}
+.runway-podium li{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:8px;background:#fffdf7;font-size:13px}
+.runway-podium li.our-brand{background:#ffe5ad;color:#884e69;font-weight:800}
+.runway-prize{font-weight:800;color:#a65070}
+@media(max-width:680px){.event-notice{font-size:9px;padding:4px}.fashion-week-preview{height:160px}.fashion-week-preview.compact{height:130px}}
+
 /* Level-up celebration and count changes */
 .level-up-panel{margin:14px 0;padding:10px;border:1px solid #f1cbbd;border-radius:15px;background:#fff8ec}
 .level-up-head{position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:130px;overflow:hidden;border-radius:12px;background:radial-gradient(circle,#fff8d7 5%,#ffe2d5 90%);text-align:center}
