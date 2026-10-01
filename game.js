@@ -575,7 +575,7 @@
     submit.onclick=()=>showSewingResult(level,sewingMatch(guide,stroke));
     $('sewingExit').onclick=closeModal;
     fabricImage.onload=()=>{if(canvas.isConnected)paint();};
-    fabricImage.src='./assets/sewing-fabric.webp';
+    fabricImage.src='./assets/sewing-fabric-illustrated.webp';
     paint();
   };
   const showSaveInfo = () => {
