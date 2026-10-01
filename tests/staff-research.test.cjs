@@ -14,13 +14,15 @@ const context={
   weightedStats:()=>20
 };
 vm.createContext(context);
-vm.runInContext(calendar+research+'\nthis.api={calendarYear,participationCount,researchDiscount,collectionGoal};',context);
+vm.runInContext(calendar+research+'\nthis.api={calendarYear,participationCount,remainingParticipations,researchDiscount,collectionGoal};',context);
 
 assert.equal(context.api.participationCount('yuna'),5);
+assert.equal(context.api.remainingParticipations('yuna'),0);
 assert.equal(context.api.participationCount('newStaff'),0);
 context.state.monthsElapsed=10; // January of the next game year.
 assert.equal(context.api.calendarYear(),2);
 assert.equal(context.api.participationCount('yuna'),0);
+assert.equal(context.api.remainingParticipations('yuna'),5);
 context.state.monthsElapsed=0;
 const choices={item:'셔츠',style:'미니멀',target:'20대 직장인'};
 const base=context.api.collectionGoal({},0,false,choices);

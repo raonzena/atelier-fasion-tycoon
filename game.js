@@ -137,6 +137,7 @@
     const member=state.staff[id];
     return member?.productionYear===year?Math.min(MAX_YEARLY_PRODUCTIONS,Math.max(0,member.productionCount||0)):0;
   };
+  const remainingParticipations=id=>MAX_YEARLY_PRODUCTIONS-participationCount(id);
   const officeRequiredReleases=level=>level*2;
   const definition = id => items.find(i => i.id === id) || furniture.find(i => state.ownedFurniture.some(o => o.id === id && o.kind === i.id));
   const itemName = id => {const d=definition(id);return d ? d.name : '알 수 없는 물건';};
@@ -613,7 +614,7 @@
     });
     hiredWorkers().forEach(w=>{
       const label=document.createElement('label');label.className='staff-choice';
-      const count=participationCount(w.id),exhausted=count>=MAX_YEARLY_PRODUCTIONS;
+      const remaining=remainingParticipations(w.id),exhausted=remaining===0;
       const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=assigned[w.id];checkbox.disabled=exhausted;
       checkbox.onchange=()=>{
         if(checkbox.checked&&Object.values(assigned).filter(Boolean).length>=MAX_PRODUCTION_STAFF){checkbox.checked=false;toast('제작에는 최대 4명까지 참여할 수 있어요.');return;}
@@ -622,7 +623,7 @@
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
       const text=document.createElement('span');text.textContent=w.name+' · '+w.role+' · LV.'+state.staff[w.id].level;
       const stats=document.createElement('small');stats.className='staff-choice-stats';stats.textContent=statSummary(w);
-      const usage=document.createElement('small');usage.className='staff-usage';usage.textContent=calendarYear()+'년 참여 '+count+'/'+MAX_YEARLY_PRODUCTIONS+(exhausted?' · 올해 참여 완료':'');
+      const usage=document.createElement('small');usage.className='staff-usage';usage.textContent='올해 남은 참여 횟수 '+remaining+'회'+(exhausted?' · 선택 불가':'');
       if(exhausted)label.classList.add('is-exhausted');
       label.append(checkbox,img,text,stats,usage);$('staffChoices').append(label);
     });
@@ -772,7 +773,7 @@
   const showStaff = (role='디자인') => {
     const roles=['디자인','생산','마케팅'];
     if(!roles.includes(role))role=roles[0];
-    showModal('<span class="modal-kicker">MY TEAM</span><h2 id="modalTitle">직원</h2><p>직원별 능력치와 올해 제작 참여 횟수를 확인하세요. 한 해에 직원당 최대 5회 참여할 수 있습니다.</p><div class="section-tabs" id="staffTabs" role="tablist" aria-label="직군"></div><div id="staffRows" class="staff-roster" role="tabpanel"></div>');
+    showModal('<span class="modal-kicker">MY TEAM</span><h2 id="modalTitle">직원</h2><p>직원별 능력치와 올해 남은 참여 횟수를 확인하세요. 한 해에 직원당 최대 5회 참여할 수 있습니다.</p><div class="section-tabs" id="staffTabs" role="tablist" aria-label="직군"></div><div id="staffRows" class="staff-roster" role="tabpanel"></div>');
     roles.forEach(name=>{
       const button=document.createElement('button');button.type='button';button.textContent=name;button.setAttribute('role','tab');
       button.setAttribute('aria-selected',String(name===role));button.className=name===role?'active':'';
@@ -784,7 +785,7 @@
       const row=document.createElement('button');row.type='button';row.className='staff-roster-card';
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
       const detail=document.createElement('span');
-      detail.innerHTML='<strong>'+w.name+' · LV.'+state.staff[w.id].level+'</strong><small>'+statSummary(w)+'</small><small>'+calendarYear()+'년 제작 참여 '+participationCount(w.id)+'/'+MAX_YEARLY_PRODUCTIONS+'회</small>';
+      detail.innerHTML='<strong>'+w.name+' · LV.'+state.staff[w.id].level+'</strong><small>'+statSummary(w)+'</small><small>올해 남은 참여 횟수 '+remainingParticipations(w.id)+'회</small>';
       row.append(img,detail);row.onclick=()=>showWorkerProfile(w.id,role);$('staffRows').append(row);
     });
   };
@@ -842,7 +843,7 @@
   const showWorkerProfile = (id,returnRole=null) => {
     const w=definition(id),member=state.staff[id];
     if(!w||!member)return;
-    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><div class="report-line">'+calendarYear()+'년 제작 참여 <strong>'+participationCount(id)+' / '+MAX_YEARLY_PRODUCTIONS+'회</strong></div><p>제작에 참여하면 경험을 얻고, 새해에는 참여 가능 횟수가 초기화됩니다.</p>'+(returnRole?'<button class="account-secondary" id="backToStaff" type="button">직원 목록으로</button>':''));
+    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><div class="report-line">올해 남은 참여 횟수 <strong>'+remainingParticipations(id)+'회</strong></div><p>제작에 참여하면 경험을 얻고, 새해에는 참여 가능 횟수가 초기화됩니다.</p>'+(returnRole?'<button class="account-secondary" id="backToStaff" type="button">직원 목록으로</button>':''));
     if(returnRole)$('backToStaff').onclick=()=>showStaff(returnRole);
   };
   const pageSize=5;
