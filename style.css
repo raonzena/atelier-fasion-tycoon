@@ -612,5 +612,6 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .room-world .piece.wide-furniture.kind-breakroom img{bottom:50%}
 .room-world .piece.wide-furniture.kind-largePhoto img{bottom:28%}
 .room-world .piece .piece-label{top:calc(50% + 8px)}
-.research-group-heading{margin:18px 0 4px;padding-bottom:5px;border-bottom:1px solid #e8d5ca;color:#805268;font-size:14px}
+.research-group-heading{margin:18px 0 4px;padding-bottom:5px;border-bottom:2px solid #e8d5ca;color:#805268;font-size:14px}
+.research-row{border-top:0}.research-row + .research-row{border-top:2px solid #e8d5ca}
 .research-row>div{min-width:0}.research-row small{line-height:1.45}.research-row button{flex:none}

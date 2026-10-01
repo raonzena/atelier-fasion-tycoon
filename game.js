@@ -268,7 +268,7 @@
     state.placed.forEach(p=>{
       const d=definition(p.id);if(!d)return;
       const button=document.createElement('button');button.type='button';
-      button.className='piece '+d.type+(selected===p.id?' selected':'');
+      button.className='piece '+d.type+(editMode&&selected===p.id?' selected':'');
       button.setAttribute('aria-label',d.name+' · '+(p.x+1)+'열 '+(p.y+1)+'행. '+(editMode?'끌거나 선택 후 빈 칸을 터치해 이동':'선택해 정보 보기'));
       if(d.spanX>1)button.classList.add('wide-furniture');
       if(d.type==='furniture'){
@@ -317,8 +317,7 @@
       });
       button.addEventListener('click',()=>{
         if(dragged)return;
-        selected=p.id;
-        if(editMode){renderFloor();renderInventory();setHint(d.name+' 선택됨 · 원하는 빈 칸을 터치하거나 끌어서 옮기세요');}
+        if(editMode){selected=p.id;renderFloor();renderInventory();setHint(d.name+' 선택됨 · 원하는 빈 칸을 터치하거나 끌어서 옮기세요');}
         else if(d.type==='worker')showWorkerProfile(d.id);else setHint(d.name+' · '+furnitureDescription(d)+' · 배치 수정을 눌러 옮길 수 있어요.');
       });
       floor.append(button);
