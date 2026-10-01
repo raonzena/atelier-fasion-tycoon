@@ -8,7 +8,7 @@
     {id:'photo',name:'촬영 공간',sprite:'prop-3',level:3,type:'furniture'},
     {id:'moodboard',name:'트렌드 보드',sprite:'prop-4',level:5,type:'furniture'},
     {id:'lounge',name:'라운지',sprite:'prop-5',level:7,type:'furniture'},
-    {id:'longRack',name:'긴 의류 행거',sprite:'prop-long-rack',level:1,type:'furniture',spanX:2,bonus:{efficiency:2}},
+    {id:'longRack',name:'긴 의류 행거',sprite:'prop-long-rack',level:1,type:'furniture',spanX:3,bonus:{efficiency:2}},
     {id:'computerDesk',name:'컴퓨터 책상',sprite:'prop-computer-desk',level:2,type:'furniture',spanX:2,bonus:{design:2,trend:1}},
     {id:'mannequin',name:'마네킹',sprite:'prop-mannequin',level:1,type:'furniture',bonus:{sewing:2}},
     {id:'breakroom',name:'탕비실',sprite:'prop-breakroom',level:2,type:'furniture',spanX:2,bonus:{efficiency:2}},
@@ -97,7 +97,7 @@
   const styles = ['미니멀','스트리트','클래식','러블리','아웃도어'];
   const targets = ['20대 직장인','10대 학생','아웃도어 고객'];
   const initial = () => ({
-    layoutVersion:4,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
+    layoutVersion:5,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
     research:0,unlocks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
@@ -117,7 +117,7 @@
         interestDue:Number.isFinite(saved.loan?.interestDue)?Math.max(0,saved.loan.interestDue):0
       };
       for(const id of loaded.hired) loaded.staff[id] = loaded.staff[id] || {level:1,xp:0};
-      if(saved.layoutVersion!==3&&saved.layoutVersion!==4){
+      if(saved.layoutVersion!==3&&saved.layoutVersion!==4&&saved.layoutVersion!==5){
         const n=gridSizes[loaded.officeLevel-1],oldWidth=saved.layoutVersion===2?8:10,oldHeight=saved.layoutVersion===2?8:7;
         const used=new Set();
         loaded.placed=loaded.placed.map(p=>{
@@ -130,7 +130,7 @@
           used.add(x+','+y);return {...p,x,y};
         });
       }
-      if(saved.layoutVersion!==4){
+      if(saved.layoutVersion!==5){
         const n=gridSizes[loaded.officeLevel-1],remapped=[];
         const width=id=>{
           const kind=loaded.ownedFurniture.find(o=>o.id===id)?.kind||id;
@@ -147,14 +147,14 @@
           remapped.push({...piece,x,y});
         }
         loaded.placed=remapped;
-        loaded.layoutVersion=4;
+        loaded.layoutVersion=5;
       }
       return loaded;
     }
     return initial();
   };
   try { state=hydrate(JSON.parse(localStorage.getItem('atelier-device-save') || 'null')); } catch {}
-  let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTile=null,dragTargetCompanion=null,eventVenueActive=false,eventVenueSeason=null;
+  let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTiles=[],eventVenueActive=false,eventVenueSeason=null;
   const currentMonth=()=>((2+state.monthsElapsed)%12)+1;
   const calendarYear=()=>1+Math.floor((2+state.monthsElapsed)/12);
   const currentTrend=()=>trends[(Math.floor(state.monthsElapsed/3)%4)+4*(Math.floor(state.monthsElapsed/12)%2)];
@@ -228,9 +228,8 @@
     return {x:Math.floor(u*gridSize()),y:Math.floor(v*gridSize())};
   };
   const clearDragTarget=()=>{
-    if(dragTargetTile)dragTargetTile.classList.remove('drag-target','drag-invalid');
-    if(dragTargetCompanion)dragTargetCompanion.classList.remove('drag-target','drag-invalid');
-    dragTargetTile=null;dragTargetCompanion=null;
+    for(const tile of dragTargetTiles)tile.classList.remove('drag-target','drag-invalid');
+    dragTargetTiles=[];
   };
   const move = (id,x,y) => {
     if(!cellsFor(id,x,y).every(cell=>isUnlocked(cell.x,cell.y))){toast('가구가 차지하는 모든 칸이 필요해요. 오피스를 확장하거나 다른 칸에 놓아주세요.');return false;}
@@ -267,9 +266,13 @@
       const button=document.createElement('button');button.type='button';
       button.className='piece '+d.type+(selected===p.id?' selected':'');
       button.setAttribute('aria-label',d.name+' · '+(p.x+1)+'열 '+(p.y+1)+'행. '+(editMode?'끌거나 선택 후 빈 칸을 터치해 이동':'선택해 정보 보기'));
-      if(d.spanX===2)button.classList.add('wide-furniture');
-      if(d.type==='furniture')button.style.setProperty('--furniture-tilt',(furnitureTilt[d.id]||0)+'deg');
-      const center=cellCenter(p.x+(d.spanX===2 ? .5 : 0),p.y);
+      if(d.spanX>1)button.classList.add('wide-furniture');
+      if(d.type==='furniture'){
+        button.classList.add('kind-'+d.id);
+        button.style.setProperty('--furniture-tilt',(furnitureTilt[d.id]||0)+'deg');
+        if(d.id==='longRack')button.style.setProperty('--rack-width',(FLOOR_RIGHT.left*d.spanX/gridSize()/1.2)+'%');
+      }
+      const center=cellCenter(p.x+((d.spanX||1)-1)/2,p.y);
       button.style.left=center.left+'%';
       button.style.top=center.top+'%';
       button.style.zIndex=5+p.x+p.y;
@@ -288,14 +291,11 @@
         if(Math.hypot(dx,dy)>5){
           button.style.transform='translate(-50%,-50%) translate('+dx+'px,'+dy+'px)';
           const cell=positionFromPointer(event),pos={x:dragStart.origin.x+cell.x-dragStart.cell.x,y:dragStart.origin.y+cell.y-dragStart.cell.y};
-          const target=tileByCell.get(pos.x+','+pos.y);
-          const companion=d.spanX===2?tileByCell.get((pos.x+1)+','+pos.y):null;
-          if(target!==dragTargetTile||companion!==dragTargetCompanion){clearDragTarget();dragTargetTile=target||null;dragTargetCompanion=companion||null;}
-          if(dragTargetTile){
-            const valid=canPlace(p.id,pos.x,pos.y);
-            for(const tile of [dragTargetTile,dragTargetCompanion].filter(Boolean)){
-              tile.classList.add('drag-target');tile.classList.toggle('drag-invalid',!valid);
-            }
+          clearDragTarget();
+          dragTargetTiles=cellsFor(p.id,pos.x,pos.y).map(cell=>tileByCell.get(cell.x+','+cell.y)).filter(Boolean);
+          const valid=canPlace(p.id,pos.x,pos.y);
+          for(const tile of dragTargetTiles){
+            tile.classList.add('drag-target');tile.classList.toggle('drag-invalid',!valid);
           }
         }
       });
@@ -327,7 +327,7 @@
       button.setAttribute('aria-label',d.name+' '+(placed(d.id)?'배치됨, 이동 선택':'배치하기'));
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+d.sprite+'.webp';img.alt='';
       const name=document.createElement('span');name.textContent=d.name;button.append(img,name);
-      const badge=document.createElement('small');badge.textContent=(d.spanX===2?'가로 2칸 · ':'')+(placed(d.id)?'배치됨':'미배치');button.append(badge);
+      const badge=document.createElement('small');badge.textContent=(d.spanX>1?'가로 '+d.spanX+'칸 · ':'')+(placed(d.id)?'배치됨':'미배치');button.append(badge);
       button.addEventListener('click',()=>{
         selected=d.id;renderInventory();renderFloor();
         setHint(placed(d.id)?d.name+'을 끌거나 빈 칸을 터치해 이동하세요':d.name+'을 놓을 빈 칸을 터치하세요');
@@ -558,7 +558,7 @@
     const stats=employeeStats(w);
     return statLabels.map(([key,label])=>label+' '+stats[key]).join(' · ');
   };
-  const furnitureDescription = item => (item.spanX===2?'가로 2칸':'1칸')+' · '+(item.bonus?'배치 시 '+statLabels.filter(([key])=>item.bonus[key]).map(([key,label])=>label+' +'+item.bonus[key]).join(' · '):'배치 보너스 없음');
+  const furnitureDescription = item => (item.spanX>1?'가로 '+item.spanX+'칸':'1칸')+' · '+(item.bonus?'배치 시 '+statLabels.filter(([key])=>item.bonus[key]).map(([key,label])=>label+' +'+item.bonus[key]).join(' · '):'배치 보너스 없음');
   const staffStatGrid = w => {
     const base=baseStats(w),bonus=levelBonus(w);
     const current=employeeStats(w);
@@ -889,10 +889,18 @@
     showModal('<span class="modal-kicker">COLLECTION ARCHIVE</span><h2 id="modalTitle">컬렉션</h2><p>최근 출시한 컬렉션 '+state.history.length+'개를 확인할 수 있어요.</p><div id="historyRows"></div>');
     if(!state.history.length)$('historyRows').textContent='아직 출시한 컬렉션이 없습니다.';
     state.history.forEach(h=>{
-      const row=document.createElement('div');row.className='report-line';
-      row.textContent=(h.year&&h.month?h.year+'년 '+h.month+'월 · ':'')+h.season+' · '+h.name+(h.fashionWeek?' · 패션위크 '+(h.fashionWeekRank?h.fashionWeekRank+'위':'미입상'):'');
-      const strong=document.createElement('strong');strong.textContent=h.score+'점 · ₩'+h.revenue+'M'+(h.prize?' + 상금 ₩'+h.prize+'M':'');
-      row.append(strong);$('historyRows').append(row);
+      const row=document.createElement('div');row.className='collection-row';
+      const heading=document.createElement('div');heading.className='collection-row-heading';
+      const title=document.createElement('span');title.textContent=(h.year&&h.month?h.year+'년 '+h.month+'월 · ':'')+h.season+' · '+h.name;
+      heading.append(title);
+      if(h.fashionWeek){
+        const badge=document.createElement('small');badge.textContent='패션위크 '+(h.fashionWeekRank?h.fashionWeekRank+'위':'미입상');
+        heading.append(badge);
+      }
+      const result=document.createElement('div');result.className='collection-row-result';
+      const score=document.createElement('strong');score.textContent=h.score+'점 · ₩'+h.revenue+'M';result.append(score);
+      if(h.prize){const prize=document.createElement('span');prize.textContent='상금 +₩'+h.prize+'M';result.append(prize);}
+      row.append(heading,result);$('historyRows').append(row);
     });
   };
   const firstFreeCell = id => {
