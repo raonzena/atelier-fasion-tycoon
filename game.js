@@ -546,22 +546,25 @@
     if(level<1||level>SEWING_MAX_LEVEL)return;
     showModal('<span class="modal-kicker">SEWING · LEVEL '+level+' / '+SEWING_MAX_LEVEL+'</span><h2 id="modalTitle">원단 재봉하기</h2><p>원단 위 점선을 따라 시작점부터 끝점까지 손가락이나 마우스로 한 번에 그려 주세요. '+sewingTarget(level)+'% 이상 일치하면 다음 레벨로 넘어갑니다.</p><canvas class="sewing-canvas" id="sewingCanvas" width="960" height="640" aria-label="재봉 원단과 점선 가이드라인. 시작점부터 끝점까지 그리세요."></canvas><div class="sewing-actions"><button class="account-secondary" id="sewingClear" type="button">선 지우기</button><button class="modal-primary" id="sewingSubmit" type="button" disabled>일치율 확인</button></div><button class="account-link" id="sewingExit" type="button">그만하기</button>');
     const canvas=$('sewingCanvas'),ctx=canvas.getContext('2d'),guide=sewingGuide(level),submit=$('sewingSubmit');
+    const fabricImage=new Image();
     let stroke=[],pointer=null;
     const pointAt=event=>{const rect=canvas.getBoundingClientRect();return {x:Math.max(0,Math.min(480,(event.clientX-rect.left)/rect.width*480)),y:Math.max(0,Math.min(320,(event.clientY-rect.top)/rect.height*320))};};
     const trace=points=>{ctx.beginPath();points.forEach((point,i)=>i?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y));ctx.stroke();};
     const paint=()=>{
-      ctx.setTransform(2,0,0,2,0,0);ctx.fillStyle='#f6dfd4';ctx.fillRect(0,0,480,320);
-      ctx.strokeStyle='#e9cabb';ctx.lineWidth=.7;
-      for(let x=0;x<480;x+=12){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,320);ctx.stroke();}
-      for(let y=0;y<320;y+=12){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(480,y);ctx.stroke();}
+      ctx.setTransform(2,0,0,2,0,0);
+      if(fabricImage.complete&&fabricImage.naturalWidth)ctx.drawImage(fabricImage,0,0,480,320);
+      else{ctx.fillStyle='#e9a9a6';ctx.fillRect(0,0,480,320);}
       ctx.lineCap='round';ctx.lineJoin='round';
-      ctx.strokeStyle='#fff9ed';ctx.lineWidth=11;trace(guide);
-      ctx.strokeStyle='#a45b72';ctx.lineWidth=3;ctx.setLineDash([7,7]);trace(guide);ctx.setLineDash([]);
+      ctx.setLineDash([7,6]);ctx.strokeStyle='#fff8ee';ctx.lineWidth=6;trace(guide);
+      ctx.strokeStyle='#a45b72';ctx.lineWidth=2;trace(guide);ctx.setLineDash([]);
       for(const [point,label] of [[guide[0],'시작'],[guide.at(-1),'끝']]){
         ctx.beginPath();ctx.arc(point.x,point.y,7,0,Math.PI*2);ctx.fillStyle='#734e67';ctx.fill();
-        ctx.font='bold 14px sans-serif';ctx.fillText(label,point.x-10,point.y-14);
+        ctx.font='bold 14px sans-serif';ctx.fillStyle='#5e3548';ctx.fillText(label,point.x-10,point.y-14);
       }
-      if(stroke.length){ctx.strokeStyle='#2d898c';ctx.lineWidth=5;trace(stroke);}
+      if(stroke.length){
+        ctx.strokeStyle='#287f82';ctx.lineWidth=5;trace(stroke);
+        ctx.strokeStyle='#eafff2';ctx.lineWidth=1.5;ctx.setLineDash([3,5]);trace(stroke);ctx.setLineDash([]);
+      }
     };
     canvas.onpointerdown=event=>{event.preventDefault();if(pointer!==null)return;pointer=event.pointerId;stroke=[pointAt(event)];submit.disabled=true;canvas.setPointerCapture(event.pointerId);paint();};
     canvas.onpointermove=event=>{if(pointer!==event.pointerId)return;event.preventDefault();const next=pointAt(event),prev=stroke.at(-1);if(Math.hypot(next.x-prev.x,next.y-prev.y)>1){stroke.push(next);paint();}};
@@ -571,6 +574,8 @@
     $('sewingClear').onclick=()=>{stroke=[];pointer=null;submit.disabled=true;paint();};
     submit.onclick=()=>showSewingResult(level,sewingMatch(guide,stroke));
     $('sewingExit').onclick=closeModal;
+    fabricImage.onload=()=>{if(canvas.isConnected)paint();};
+    fabricImage.src='./assets/sewing-fabric.webp';
     paint();
   };
   const showSaveInfo = () => {
