@@ -298,13 +298,61 @@
   const availableItems = () => baseCategories.concat(has('hoodie')?['후드티']:[],has('bag')?['가방']:[]);
   const availableMaterials = () => ['면'].concat(has('linen')?['리넨']:[],has('recycled')?['재생 원단']:[]);
   const levelBonus = w => Math.max(0,(state.staff[w.id]?.level||1)-1);
-  const effectiveSkill = w => w.skill+levelBonus(w);
+  const statLabels = [['design','디자인'],['sewing','봉제'],['trend','트렌드 감각'],['efficiency','생산 효율']];
+  const roleStats = {
+    '디자인':{design:2,sewing:-2,trend:0,efficiency:-1},
+    '생산':{design:-2,sewing:2,trend:-2,efficiency:1},
+    '마케팅':{design:0,sewing:-3,trend:2,efficiency:-1}
+  };
+  const baseStats = w => Object.fromEntries(statLabels.map(([key])=>[key,Math.max(1,w.skill+roleStats[w.role][key])]));
+  const statGrowth = base => Math.max(1,Math.round(base/8));
+  const employeeStats = w => {
+    const base=baseStats(w),bonus=levelBonus(w);
+    return Object.fromEntries(statLabels.map(([key])=>[key,base[key]+statGrowth(base[key])*bonus]));
+  };
+  const statSummary = w => {
+    const stats=employeeStats(w);
+    return statLabels.map(([key,label])=>label+' '+stats[key]).join(' · ');
+  };
+  const staffStatGrid = w => {
+    const base=baseStats(w),bonus=levelBonus(w);
+    const current=employeeStats(w);
+    return '<div class="staff-stat-grid">'+statLabels.map(([key,label])=>'<div><span>'+label+'</span><strong>'+current[key]+'</strong><small>기본 '+base[key]+(bonus?' +'+statGrowth(base[key])*bonus:'')+'</small></div>').join('')+'</div>';
+  };
+  const statWeights = {design:.3,sewing:.3,trend:.2,efficiency:.2};
+  const weightedStats = stats => statLabels.reduce((sum,[key])=>sum+stats[key]*statWeights[key],0);
+  const teamStats = (assigned,base=false) => {
+    const totals=Object.fromEntries(statLabels.map(([key])=>[key,0]));
+    for(const w of hiredWorkers()) if(assigned[w.id]){
+      const stats=base?baseStats(w):employeeStats(w);
+      for(const [key] of statLabels) totals[key]+=stats[key];
+    }
+    return totals;
+  };
+  const rollStats = (assigned,random=Math.random) => {
+    const rolls=Object.fromEntries(statLabels.map(([key])=>[key,0]));
+    for(const w of hiredWorkers()) if(assigned[w.id]){
+      const stats=employeeStats(w);
+      for(const [key] of statLabels) rolls[key]+=Math.round(stats[key]*(0.2+random()*0.8));
+    }
+    return rolls;
+  };
+  const collectionGoal = (totals,matches,material) => Math.max(1,Math.ceil(weightedStats(totals)*.45+3.5-matches*.65-(material?1:0)));
+  const collectionTrial = (assigned,goal,random=Math.random) => {
+    const rolls=rollStats(assigned,random),score=weightedStats(rolls);
+    return {rolls,score,goal,success:score>=goal};
+  };
   const successChance = (choices,assigned) => {
     const trend=trends[state.releases%trends.length];
     const matches=Number(choices.target===trend.target)+Number(choices.item===trend.item)+Number(choices.style===trend.style);
-    const skill=hiredWorkers().filter(w=>assigned[w.id]).reduce((sum,w)=>sum+state.staff[w.id].level*2+Math.round(effectiveSkill(w)/2),0);
-    const material=choices.material==='리넨'&&trend.season==='여름'||choices.material==='재생 원단'&&choices.style==='아웃도어'?6:0;
-    return [Math.max(10,Math.min(95,32+matches*10+skill+material)),matches];
+    const material=choices.material==='리넨'&&trend.season==='여름'||choices.material==='재생 원단'&&choices.style==='아웃도어';
+    const totals=teamStats(assigned),goal=collectionGoal(teamStats(assigned,true),matches,material);
+    if(!Object.values(assigned).some(Boolean))return [0,matches,totals,goal];
+    // Use a fixed sequence so the preview stays stable while the actual trial remains random.
+    let seed=123456789,wins=0;
+    const sample=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+    for(let i=0;i<384;i++)if(collectionTrial(assigned,goal,sample).success)wins++;
+    return [Math.round(wins/384*100),matches,totals,goal];
   };
   const showLaunch = () => {
     if(!state.hired.length){toast('먼저 직원을 고용하세요.');return;}
@@ -315,7 +363,7 @@
     showModal('<span class="modal-kicker">NEW COLLECTION · '+trend.season+'</span><h2 id="modalTitle">다음 컬렉션 기획</h2><p>제작비 ₩38M · 이번 시즌의 시장 흐름과 팀 능력치를 고려하세요.</p><div id="choices"></div><div class="choice-group"><strong>제작에 배정할 직원</strong><div id="staffChoices" class="staff-choices"></div></div><div id="chancePreview" class="chance-preview"></div><button class="modal-primary" id="confirmLaunch" type="button">제작하고 출시하기</button>');
     const update=()=>{
       const result=successChance(choices,assigned);
-      $('chancePreview').textContent='예상 성공률 '+result[0]+'% · 트렌드 일치 '+result[1]+'/3 · 참여 직원 '+Object.values(assigned).filter(Boolean).length+'명';
+      $('chancePreview').textContent='예상 성공률 '+result[0]+'% · 합산 목표 '+result[3]+' · 트렌드 일치 '+result[1]+'/3 · 참여 직원 '+Object.values(assigned).filter(Boolean).length+'명';
     };
     [['target','고객',targets],['item','의류',availableItems()],['style','스타일',styles],['material','소재',availableMaterials()]].forEach(groupData=>{
       const [key,label,values]=groupData;
@@ -334,33 +382,41 @@
       const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;
       checkbox.onchange=()=>{assigned[w.id]=checkbox.checked;update();};
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';
-      const text=document.createElement('span');text.textContent=w.name+' · '+w.role+' · 능력 '+effectiveSkill(w)+' (기본 '+w.skill+' +'+levelBonus(w)+') · LV.'+state.staff[w.id].level;
-      label.append(checkbox,img,text);$('staffChoices').append(label);
+      const text=document.createElement('span');text.textContent=w.name+' · '+w.role+' · LV.'+state.staff[w.id].level;
+      const stats=document.createElement('small');stats.className='staff-choice-stats';stats.textContent=statSummary(w);
+      label.append(checkbox,img,text,stats);$('staffChoices').append(label);
     });
     update();$('confirmLaunch').onclick=()=>beginProduction(choices,assigned);
   };
   const beginProduction = (choices,assigned) => {
     if(isProducing)return;
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
-    const [chance]=successChance(choices,assigned);
-    const success=Math.random()*100<chance;
-    const target=success?100:chance;
+    const [chance,,totals,goal]=successChance(choices,assigned);
+    const outcome=collectionTrial(assigned,goal);
+    const target=outcome.success?100:Math.min(chance,99);
     isProducing=true;
-    showModal('<span class="modal-kicker">COLLECTION IN PROGRESS</span><h2 id="modalTitle" tabindex="-1">고양이 팀이 제작 중이에요</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>제작 진행도 · 예상 성공률 '+chance+'%</p><div class="production-studio" role="img" aria-label="고양이들이 패션 사무실에서 디자인하고 재봉하고 의상을 정리하는 장면"><img data-skeleton src="./assets/production-studio.webp" alt="" decoding="async"></div></div>');
+    showModal('<span class="modal-kicker">COLLECTION IN PROGRESS</span><h2 id="modalTitle" tabindex="-1">고양이 팀이 제작 중이에요</h2><div class="production-stage" role="status" aria-label="예상 성공률 '+chance+'퍼센트로 컬렉션 제작 중"><div class="production-percent" id="productionPercent" aria-hidden="true">0%</div><div class="production-track" aria-hidden="true"><span id="productionFill"></span></div><p>제작 진행도 · 예상 성공률 '+chance+'% · 합산 목표 '+goal+'</p><div class="production-stats">'+statLabels.map(([key,label])=>'<div><span>'+label+'</span><strong id="production-'+key+'">0 / '+totals[key]+'</strong><div class="production-stat-track"><i id="production-fill-'+key+'"></i></div></div>').join('')+'</div><div class="production-studio" role="img" aria-label="고양이들이 패션 사무실에서 디자인하고 재봉하고 의상을 정리하는 장면"><img data-skeleton src="./assets/production-studio.webp" alt="" decoding="async"></div></div>');
     $('modalTitle').focus();
+    const renderProgress=progress=>{
+      const eased=1-Math.pow(1-progress,3);
+      $('productionPercent').textContent=Math.round(target*eased)+'%';$('productionFill').style.width=target*eased+'%';
+      for(const [key] of statLabels){
+        $('production-'+key).textContent=Math.round(outcome.rolls[key]*eased)+' / '+totals[key];
+        $('production-fill-'+key).style.width=(totals[key]?outcome.rolls[key]/totals[key]*eased*100:0)+'%';
+      }
+    };
     const reduced=typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(reduced){$('productionPercent').textContent=target+'%';$('productionFill').style.width=target+'%';}
+    if(reduced)renderProgress(1);
     else {
       const start=performance.now(),duration=1600;
       const tick=now=>{
         if(!isProducing)return;
-        const progress=Math.min(1,(now-start)/duration),value=Math.round(target*(1-Math.pow(1-progress,3)));
-        $('productionPercent').textContent=value+'%';$('productionFill').style.width=value+'%';
+        const progress=Math.min(1,(now-start)/duration);renderProgress(progress);
         if(progress<1)requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     }
-    setTimeout(()=>{isProducing=false;launch(choices,assigned,success);},reduced?250:2250);
+    setTimeout(()=>{isProducing=false;launch(choices,assigned,outcome);},reduced?250:2250);
   };
   const changeCard = (label,delta,previous,unit) => {
     const direction=delta>0?'up':delta<0?'down':'flat';
@@ -374,13 +430,13 @@
     [-112,-64],[-85,-109],[-34,-116],[21,-108],[81,-103],[116,-58],
     [106,29],[69,83],[14,105],[-48,94],[-101,51],[-122,-8]
   ].map(([x,y],i)=>'<i style="--x:'+x+'px;--y:'+y+'px;--hue:'+[344,35,49,178][i%4]+'"></i>').join('')+'</div>';
-  const launch = (choices,assigned,resolvedSuccess) => {
+  const launch = (choices,assigned,outcome) => {
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
     const previous={assets:state.assets,customers:state.customers,research:state.research};
     const trend=trends[state.releases%trends.length];
     const [chance,matches]=successChance(choices,assigned);
-    const success=typeof resolvedSuccess==='boolean'?resolvedSuccess:Math.random()*100<chance;
-    const score=Math.max(20,Math.min(100,chance+(success?Math.floor(Math.random()*15):-(15+Math.floor(Math.random()*18)))));
+    const success=outcome.success;
+    const score=Math.max(20,Math.min(100,Math.round(65+(outcome.score/outcome.goal-1)*60+(success?8:-8))));
     const revenue=Math.round(score*(success?1.8:1.12)+state.companyLevel*4);
     const gained=Math.round((score-48)*3.7);
     const points=success?3:2;
@@ -394,7 +450,7 @@
         member.xp++;
         if(member.xp>=member.level*2){member.xp=0;member.level++;}
       }
-      xpChanges.push({name:w.name,level:member.level,xp:member.xp,leveled:member.level>before,skill:effectiveSkill(w)});
+      xpChanges.push({name:w.name,level:member.level,xp:member.xp,leveled:member.level>before});
     }
     state.releases++;
     state.companyLevel=Math.min(10,1+Math.floor(state.releases/2));
@@ -406,8 +462,8 @@
     state.history.unshift({name:choices.style+' '+choices.item,season:trend.season,score,revenue,review});
     state.history=state.history.slice(0,8);save();render();
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
-    const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.leveled?'+1 XP · LV.'+w.level+' 달성! · 능력 '+w.skill:w.level===10?'최대 레벨 · 능력 '+w.skill:'+1 XP · '+w.xp+'/'+(w.level*2)+' · 능력 '+w.skill)+'</span></div>').join('')+'</div>';
-    showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">성공 확률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div><div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.leveled?'+1 XP · LV.'+w.level+' 달성! · 기본값에 비례해 능력 상승':w.level===10?'최대 레벨':'+1 XP · '+w.xp+'/'+(w.level*2))+'</span></div>').join('')+'</div>';
+    showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div><div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
   const showResearch = () => {
@@ -420,7 +476,7 @@
       const row=document.createElement('div');row.className='report-line';
       row.textContent=w.name;
       const strong=document.createElement('strong');
-      const s=state.staff[w.id];strong.textContent='LV.'+s.level+' · 능력 '+effectiveSkill(w)+' (+'+levelBonus(w)+') · 경험 '+s.xp+'/'+(s.level*2);
+      const s=state.staff[w.id];strong.textContent='LV.'+s.level+' · '+statSummary(w)+' · 경험 '+s.xp+'/'+(s.level*2);
       row.append(strong);$('teamRows').append(row);
     });
     projects.forEach(project=>{
@@ -448,7 +504,7 @@
   const showWorkerProfile = id => {
     const w=definition(id),member=state.staff[id];
     if(!w||!member)return;
-    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><div class="report-line">기본 능력치 <strong>'+w.skill+'</strong></div><div class="report-line">레벨 보너스 <strong>+'+levelBonus(w)+'</strong></div><div class="report-line">현재 능력치 <strong>'+effectiveSkill(w)+'</strong></div><div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><p>레벨이 오를 때마다 능력치가 1씩 올라가고 제작 성공률에 반영됩니다.</p>');
+    showModal('<span class="modal-kicker">STAFF PROFILE</span><h2 id="modalTitle">'+w.name+'</h2><div class="profile-portrait"><img data-skeleton src="./assets/'+w.sprite+'.webp" alt=""></div><div class="report-line">직군 <strong>'+w.role+'</strong></div><div class="report-line">레벨 <strong>LV.'+member.level+' / 10</strong></div><h3 class="stats-heading">직원 능력치</h3>'+staffStatGrid(w)+'<div class="report-line">경험치 <strong>'+member.xp+' / '+(member.level*2)+'</strong></div><p>기본값 8은 레벨마다 +1, 16은 +2처럼 항목별 기본값에 비례해 성장합니다. 제작 시 네 능력을 각각 굴려 합산 결과로 성공을 판단합니다.</p>');
   };
   const pageSize=5;
   const showPager = (page,count,onPage) => {
@@ -478,8 +534,9 @@
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';img.loading='eager';img.decoding='async';img.width=72;img.height=72;
       const body=document.createElement('div');body.className='shop-description';
       const heading=document.createElement('strong');heading.textContent=w.name+' · '+w.role;
-      const detail=document.createElement('small');detail.textContent='능력 '+w.skill+' · 오피스 LV.'+w.level+'부터';
-      body.append(heading,detail);
+      const detail=document.createElement('small');detail.textContent=statSummary(w);
+      const unlock=document.createElement('small');unlock.textContent='오피스 LV.'+w.level+'부터';
+      body.append(heading,detail,unlock);
       const button=document.createElement('button');button.type='button';
       const owned=state.hired.includes(w.id),locked=state.officeLevel<w.level,full=state.hired.length>=employeeCap[state.officeLevel-1];
       button.textContent=owned?'고용됨':locked?'잠김':full?'정원 마감':'₩'+w.cost+'M 고용';
