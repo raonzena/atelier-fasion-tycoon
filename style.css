@@ -469,3 +469,7 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .loan-form button,.loan-repay-all{padding:10px 13px;border:0;border-radius:9px;background:#c67189;color:#fff;font-size:13px;font-weight:800;white-space:nowrap}
 .loan-form button:disabled,.loan-repay-all:disabled{background:#ded0ce;color:#75676d;cursor:default}
 .loan-repay-all{width:100%;margin-top:3px;background:#82617b}
+
+/* Counter-scale sprites as the illustrated office grows from 70% to 100%. */
+.room-world .piece{width:var(--piece-size,10%);height:var(--piece-size,10%);transition:left .18s,top .18s,width .45s,height .45s}
+@media(max-width:680px){.room-world .piece{width:var(--piece-size-mobile,12%);height:var(--piece-size-mobile,12%)}}

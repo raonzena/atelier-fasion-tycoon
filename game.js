@@ -286,7 +286,11 @@
     const trend=trends[state.releases%trends.length];
     $('season').textContent=trend.season;
     $('trend').textContent='트렌드 · '+trend.style+' '+trend.item;
-    $('roomWorld').style.width=(70+(state.officeLevel-1)*30/9)+'%';
+    const worldWidth=70+(state.officeLevel-1)*30/9;
+    $('roomWorld').style.width=worldWidth+'%';
+    // The painted office expands, but sprites and their hit targets keep the same screen size.
+    $('roomWorld').style.setProperty('--piece-size',10*70/worldWidth+'%');
+    $('roomWorld').style.setProperty('--piece-size-mobile',12*70/worldWidth+'%');
     const backdrop=$('roomBackdrop');
     const artwork=(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+'.webp';
     if(backdrop.dataset.artwork!==artwork){
