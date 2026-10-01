@@ -4,6 +4,7 @@
   const items = [
     {id:'designDesk',name:'디자인 책상',sprite:'prop-0',level:1,type:'furniture'},
     {id:'sewingDesk',name:'재봉 작업대',sprite:'prop-1',level:1,type:'furniture'},
+    {id:'sewingMachine',name:'미니게임 재봉틀',sprite:'prop-sewing-machine',level:1,type:'furniture'},
     {id:'rack',name:'의류 행거',sprite:'prop-2',level:1,type:'furniture'},
     {id:'photo',name:'촬영 공간',sprite:'prop-3',level:3,type:'furniture'},
     {id:'moodboard',name:'트렌드 보드',sprite:'prop-4',level:5,type:'furniture'},
@@ -37,7 +38,7 @@
   ];
   const workers = items.filter(i => i.type === 'worker');
   const furniture = items.filter(i => i.type === 'furniture');
-  const furnitureTilt = {designDesk:14,sewingDesk:17,rack:22,photo:15,moodboard:15,lounge:15,longRack:22,computerDesk:18,mannequin:0,breakroom:13,fridge:18,largePhoto:16,fabricSamples:20};
+  const furnitureTilt = {designDesk:14,sewingDesk:17,sewingMachine:15,rack:22,photo:15,moodboard:15,lounge:15,longRack:22,computerDesk:18,mannequin:0,breakroom:13,fridge:18,largePhoto:16,fabricSamples:20};
   const skeletonImage = img => {
     img.setAttribute('data-skeleton','');
     const finish = () => img.classList.add('image-ready');
@@ -64,7 +65,7 @@
     return level+(level>=8?3:level>=4?2:1);
   });
   const furnitureCap = [2,3,4,5,6,7,8,9,10,11,12,13];
-  const furniturePrice = {designDesk:18,sewingDesk:22,rack:16,photo:30,moodboard:26,lounge:36,longRack:28,computerDesk:42,mannequin:24,breakroom:32,fridge:20,largePhoto:62,fabricSamples:38};
+  const furniturePrice = {designDesk:18,sewingDesk:22,sewingMachine:34,rack:16,photo:30,moodboard:26,lounge:36,longRack:28,computerDesk:42,mannequin:24,breakroom:32,fridge:20,largePhoto:62,fabricSamples:38};
   const offices = ['낡은 원룸 사무실','정돈된 작업실','첫 번째 스튜디오','창가 작업실','성장하는 아틀리에','넓어진 디자인실','브랜드 본사','도심 패션 스튜디오','프리미엄 오피스','글로벌 패션 하우스','국제 컬렉션 스튜디오','월드 아틀리에'];
   const gridSizes=[3,4,4,5,5,6,6,7,7,8,8,8];
   const bounds=gridSizes.map(n=>[0,n-1,0,n-1]);
@@ -323,7 +324,7 @@
       const d=definition(p.id);if(!d)return;
       const button=document.createElement('button');button.type='button';
       button.className='piece '+d.type+(editMode&&selected===p.id?' selected':'');
-      button.setAttribute('aria-label',d.name+' · '+(p.x+1)+'열 '+(p.y+1)+'행. '+(editMode?'끌거나 선택 후 빈 칸을 터치해 이동':'선택해 정보 보기'));
+      button.setAttribute('aria-label',d.name+' · '+(p.x+1)+'열 '+(p.y+1)+'행. '+(editMode?'끌거나 선택 후 빈 칸을 터치해 이동':d.id==='sewingMachine'?'재봉 미니게임 시작':'선택해 정보 보기'));
       if(d.spanX>1)button.classList.add('wide-furniture');
       if(d.type==='furniture'){
         button.classList.add('kind-'+d.id);
@@ -372,6 +373,7 @@
       button.addEventListener('click',()=>{
         if(dragged)return;
         if(editMode){selected=p.id;renderFloor();renderInventory();setHint(d.name+' 선택됨 · 원하는 빈 칸을 터치하거나 끌어서 옮기세요');}
+        else if(d.id==='sewingMachine')showSewingGame(1);
         else if(d.type==='worker')showWorkerProfile(d.id);else setHint(d.name+' · '+furnitureDescription(d)+' · 배치 수정을 눌러 옮길 수 있어요.');
       });
       floor.append(button);
@@ -502,6 +504,75 @@
     $('modalLayer').querySelector('.modal-card').scrollTop=0;
     $('modalClose').hidden=isProducing;if(!isProducing)$('modalClose').focus();
   };
+  const SEWING_MAX_LEVEL=10;
+  const sewingTarget=level=>60+(level-1)*3;
+  const sewingGuide=level=>Array.from({length:121},(_,i)=>{
+    const t=i/120;
+    const amplitude=level===1?0:26+(level-2)*4;
+    const waves=.5+Math.floor((level-2)/2)*.5;
+    return {x:46+t*388,y:160+amplitude*Math.sin(t*Math.PI*2*waves)};
+  });
+  const pathLength=points=>points.slice(1).reduce((sum,point,i)=>sum+Math.hypot(point.x-points[i].x,point.y-points[i].y),0);
+  const resamplePath=(points,count)=>{
+    const lengths=[0];
+    for(let i=1;i<points.length;i++)lengths.push(lengths[i-1]+Math.hypot(points[i].x-points[i-1].x,points[i].y-points[i-1].y));
+    const total=lengths[lengths.length-1],result=[];
+    let segment=1;
+    for(let i=0;i<count;i++){
+      const distance=total*i/(count-1);
+      while(segment<lengths.length-1&&lengths[segment]<distance)segment++;
+      const start=points[segment-1],end=points[segment],span=lengths[segment]-lengths[segment-1];
+      const ratio=span?(distance-lengths[segment-1])/span:0;
+      result.push({x:start.x+(end.x-start.x)*ratio,y:start.y+(end.y-start.y)*ratio});
+    }
+    return result;
+  };
+  const sewingMatch=(guide,stroke)=>{
+    if(stroke.length<2)return 0;
+    const guideLength=pathLength(guide),strokeLength=pathLength(stroke);
+    if(strokeLength<guideLength*.25)return 0;
+    const target=resamplePath(guide,80),drawn=resamplePath(stroke,80);
+    const average=target.reduce((sum,p,i)=>sum+Math.hypot(p.x-drawn[i].x,p.y-drawn[i].y),0)/target.length;
+    const endpoints=(Math.hypot(guide[0].x-stroke[0].x,guide[0].y-stroke[0].y)+Math.hypot(guide.at(-1).x-stroke.at(-1).x,guide.at(-1).y-stroke.at(-1).y))/2;
+    return Math.max(0,Math.min(100,Math.round(100-average*1.2-endpoints*.25-Math.abs(strokeLength-guideLength)/guideLength*35)));
+  };
+  const showSewingResult=(level,score)=>{
+    const passed=score>=sewingTarget(level),finished=passed&&level===SEWING_MAX_LEVEL;
+    showModal('<span class="modal-kicker">SEWING · LEVEL '+level+' / '+SEWING_MAX_LEVEL+'</span><h2 id="modalTitle">'+(finished?'10레벨 완료!':passed?'재봉 성공!':'게임 오버')+'</h2><div class="sewing-result">'+score+'<small>% 일치</small></div><p>통과 기준 '+sewingTarget(level)+'%'+(passed?' · 가이드라인을 잘 따라 그렸어요.':' · 가이드라인에 더 가깝게 그려 보세요.')+'</p><button class="modal-primary" id="sewingContinue" type="button">'+(finished?'다시하기':passed?'다음 레벨':'다시하기')+'</button><button class="account-secondary" id="sewingQuit" type="button">그만하기</button>');
+    $('sewingContinue').onclick=()=>showSewingGame(passed&&!finished?level+1:1);
+    $('sewingQuit').onclick=closeModal;
+  };
+  const showSewingGame=(level=1)=>{
+    if(level<1||level>SEWING_MAX_LEVEL)return;
+    showModal('<span class="modal-kicker">SEWING · LEVEL '+level+' / '+SEWING_MAX_LEVEL+'</span><h2 id="modalTitle">원단 재봉하기</h2><p>원단 위 점선을 따라 시작점부터 끝점까지 손가락이나 마우스로 한 번에 그려 주세요. '+sewingTarget(level)+'% 이상 일치하면 다음 레벨로 넘어갑니다.</p><canvas class="sewing-canvas" id="sewingCanvas" width="960" height="640" aria-label="재봉 원단과 점선 가이드라인. 시작점부터 끝점까지 그리세요."></canvas><div class="sewing-actions"><button class="account-secondary" id="sewingClear" type="button">선 지우기</button><button class="modal-primary" id="sewingSubmit" type="button" disabled>일치율 확인</button></div><button class="account-link" id="sewingExit" type="button">그만하기</button>');
+    const canvas=$('sewingCanvas'),ctx=canvas.getContext('2d'),guide=sewingGuide(level),submit=$('sewingSubmit');
+    let stroke=[],pointer=null;
+    const pointAt=event=>{const rect=canvas.getBoundingClientRect();return {x:Math.max(0,Math.min(480,(event.clientX-rect.left)/rect.width*480)),y:Math.max(0,Math.min(320,(event.clientY-rect.top)/rect.height*320))};};
+    const trace=points=>{ctx.beginPath();points.forEach((point,i)=>i?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y));ctx.stroke();};
+    const paint=()=>{
+      ctx.setTransform(2,0,0,2,0,0);ctx.fillStyle='#f6dfd4';ctx.fillRect(0,0,480,320);
+      ctx.strokeStyle='#e9cabb';ctx.lineWidth=.7;
+      for(let x=0;x<480;x+=12){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,320);ctx.stroke();}
+      for(let y=0;y<320;y+=12){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(480,y);ctx.stroke();}
+      ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.strokeStyle='#fff9ed';ctx.lineWidth=11;trace(guide);
+      ctx.strokeStyle='#a45b72';ctx.lineWidth=3;ctx.setLineDash([7,7]);trace(guide);ctx.setLineDash([]);
+      for(const [point,label] of [[guide[0],'시작'],[guide.at(-1),'끝']]){
+        ctx.beginPath();ctx.arc(point.x,point.y,7,0,Math.PI*2);ctx.fillStyle='#734e67';ctx.fill();
+        ctx.font='bold 14px sans-serif';ctx.fillText(label,point.x-10,point.y-14);
+      }
+      if(stroke.length){ctx.strokeStyle='#2d898c';ctx.lineWidth=5;trace(stroke);}
+    };
+    canvas.onpointerdown=event=>{event.preventDefault();if(pointer!==null)return;pointer=event.pointerId;stroke=[pointAt(event)];submit.disabled=true;canvas.setPointerCapture(event.pointerId);paint();};
+    canvas.onpointermove=event=>{if(pointer!==event.pointerId)return;event.preventDefault();const next=pointAt(event),prev=stroke.at(-1);if(Math.hypot(next.x-prev.x,next.y-prev.y)>1){stroke.push(next);paint();}};
+    const finish=event=>{if(pointer!==event.pointerId)return;pointer=null;submit.disabled=stroke.length<2;};
+    canvas.onpointerup=finish;
+    canvas.onpointercancel=()=>{pointer=null;stroke=[];submit.disabled=true;paint();};
+    $('sewingClear').onclick=()=>{stroke=[];pointer=null;submit.disabled=true;paint();};
+    submit.onclick=()=>showSewingResult(level,sewingMatch(guide,stroke));
+    $('sewingExit').onclick=closeModal;
+    paint();
+  };
   const showSaveInfo = () => {
     if(window.atelierCloud?.isSignedIn()){showAccount();return;}
     showModal('<span class="modal-kicker">PLAY DATA</span><h2 id="modalTitle">진행 내용 저장</h2><p>계정으로 로그인하면 다른 기기에서도 이어할 수 있어요. 게스트 플레이는 아래에서 이 브라우저에 저장할 수 있습니다.</p><button class="modal-primary" id="openAccount" type="button">로그인 · 회원가입</button><button class="account-secondary" id="enableSave" type="button">'+(state.localSave?'지금 이 기기에 저장':'이 기기에 저장 시작')+'</button>');
@@ -618,7 +689,7 @@
     const stats=employeeStats(w);
     return statLabels.map(([key,label])=>label+' '+stats[key]).join(' · ');
   };
-  const furnitureDescription = item => (item.spanX>1?'가로 '+item.spanX+'칸':'1칸')+' · '+(item.bonus?'배치 시 '+statLabels.filter(([key])=>item.bonus[key]).map(([key,label])=>label+' +'+item.bonus[key]).join(' · '):'배치 보너스 없음');
+  const furnitureDescription = item => (item.spanX>1?'가로 '+item.spanX+'칸':'1칸')+' · '+(item.id==='sewingMachine'?'배치 후 클릭해 재봉 미니게임 시작':item.bonus?'배치 시 '+statLabels.filter(([key])=>item.bonus[key]).map(([key,label])=>label+' +'+item.bonus[key]).join(' · '):'배치 보너스 없음');
   const staffStatGrid = w => {
     const base=baseStats(w),bonus=levelBonus(w);
     const current=employeeStats(w);
