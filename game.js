@@ -48,7 +48,11 @@
       else setTimeout(warmArtwork, 1200);
     }, {once:true});
   }
-  const employeeCap = [1,2,3,4,5,6,7,8,9,10];
+  // Each larger office layout adds staff capacity on top of its level.
+  const employeeCap = Array.from({length:10},(_,index)=>{
+    const level=index+1;
+    return level+(level>=8?3:level>=4?2:0);
+  });
   const furnitureCap = [2,3,4,5,6,7,8,9,10,11];
   const furniturePrice = {designDesk:18,sewingDesk:22,rack:16,photo:30,moodboard:26,lounge:36};
   const offices = ['낡은 원룸 사무실','정돈된 작업실','첫 번째 스튜디오','창가 작업실','성장하는 아틀리에','넓어진 디자인실','브랜드 본사','도심 패션 스튜디오','프리미엄 오피스','글로벌 패션 하우스'];
