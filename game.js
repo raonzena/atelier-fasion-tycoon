@@ -333,9 +333,19 @@
     renderFloor();if(editMode)renderInventory();
   };
   let accountChoiceResolve=null;
+  let pendingLevelUp=null;
   const closeModal = () => {
     if(isProducing)return;
     if(accountChoiceResolve){accountChoiceResolve(null);accountChoiceResolve=null;}
+    if(pendingLevelUp){
+      const details=pendingLevelUp;
+      pendingLevelUp=null;
+      showModal('<span class="modal-kicker">LEVEL UP</span><h2 id="modalTitle" tabindex="-1">새로운 레벨업 정보</h2>'+details+'<button class="modal-primary" id="levelUpDone" type="button">사무실로 돌아가기</button>');
+      animateLevelChanges();
+      $('levelUpDone').onclick=closeModal;
+      $('modalTitle').focus();
+      return;
+    }
     $('modalLayer').hidden=true;$('modalContent').replaceChildren();
   };
   const showModal = html => {
@@ -346,7 +356,9 @@
       img.addEventListener('error',finish,{once:true});
       if(img.complete)finish();
     });
-    $('modalLayer').hidden=false;$('modalClose').hidden=isProducing;if(!isProducing)$('modalClose').focus();
+    $('modalLayer').hidden=false;
+    $('modalLayer').querySelector('.modal-card').scrollTop=0;
+    $('modalClose').hidden=isProducing;if(!isProducing)$('modalClose').focus();
   };
   const showSaveInfo = () => {
     if(window.atelierCloud?.isSignedIn()){showAccount();return;}
@@ -633,7 +645,7 @@
     state.history.unshift({name:choices.style+' '+choices.item,season:trend.season,score,revenue,review});
     state.history=state.history.slice(0,8);save();render();
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
-    const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.leveled?'+1 XP · LV.'+w.level+' 달성! · 기본값에 비례해 능력 상승':w.level===10?'최대 레벨':'+1 XP · '+w.xp+'/'+(w.level*2))+'</span></div>').join('')+'</div>';
+    const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.level===10&&!w.leveled?'최대 레벨':'+1 XP')+'</span></div>').join('')+'</div>';
     const loanReport=chargedInterest?'<div class="report-line">이번 시즌 대출 이자 <strong>+₩'+money(chargedInterest)+'M · 총 상환액 ₩'+money(loanBalance())+'M</strong></div>':'';
     const companyLevelUp=state.companyLevel>beforeCompanyLevel?levelUpPanel('회사 LV.'+state.companyLevel+' 달성!',[
       levelChange('대출 원금 한도',loanLimit(beforeCompanyLevel),loanLimit(state.companyLevel),'M','M'),
@@ -644,10 +656,8 @@
       '<div class="level-employee-name">'+w.name+' · LV.'+w.level+'</div>',
       ...statLabels.map(([key,label])=>levelChange(label,w.beforeStats[key],w.afterStats[key]))
     ]),'제작 경험으로 능력치가 올랐어요'):'';
+    pendingLevelUp=companyLevelUp+staffLevelUp||null;
     showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
-    if(companyLevelUp)$('modalContent').querySelector('.result-hero').insertAdjacentHTML('afterend',companyLevelUp);
-    if(staffLevelUp)$('modalContent').querySelector(companyLevelUp?'.level-up-panel':'.result-hero').insertAdjacentHTML('afterend',staffLevelUp);
-    if(companyLevelUp||staffLevelUp)animateLevelChanges();
     $('reportDone').onclick=closeModal;
   };
   const showResearch = () => {
