@@ -542,7 +542,7 @@
   const showHire = (page=0) => {
     const roster=workers.slice().sort((a,b)=>a.level-b.level);
     page=Math.max(0,Math.min(page,Math.ceil(roster.length/pageSize)-1));
-    showModal('<span class="modal-kicker">STAFF RECRUITMENT</span><h2 id="modalTitle">직원 고용</h2><p>오피스 LV.'+state.officeLevel+' · 고용 '+state.hired.length+'/'+employeeCap[state.officeLevel-1]+'명. 채용한 고양이는 사무실에 배치되고 제작에 참여할 수 있어요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="직원 목록 페이지"></nav>');
+    showModal('<span class="modal-kicker">STAFF RECRUITMENT</span><h2 id="modalTitle">직원 고용</h2><p>오피스 LV.'+state.officeLevel+' · 고용 '+state.hired.length+'/'+employeeCap[state.officeLevel-1]+'명. 채용한 고양이는 사무실에 배치되고 제작에 참여할 수 있어요. 컬렉션 제작비는 별도로 ₩38M이 필요해요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="직원 목록 페이지"></nav>');
     roster.slice(page*pageSize,(page+1)*pageSize).forEach(w=>{
       const row=document.createElement('div');row.className='shop-row';
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';img.loading='eager';img.decoding='async';img.width=72;img.height=72;
@@ -552,9 +552,9 @@
       const unlock=document.createElement('small');unlock.textContent='오피스 LV.'+w.level+'부터';
       body.append(heading,detail,unlock);
       const button=document.createElement('button');button.type='button';
-      const owned=state.hired.includes(w.id),locked=state.officeLevel<w.level,full=state.hired.length>=employeeCap[state.officeLevel-1];
-      button.textContent=owned?'고용됨':locked?'잠김':full?'정원 마감':'₩'+w.cost+'M 고용';
-      button.disabled=owned||locked||full||state.assets-w.cost<38;
+      const owned=state.hired.includes(w.id),locked=state.officeLevel<w.level,full=state.hired.length>=employeeCap[state.officeLevel-1],affordable=state.assets>=w.cost;
+      button.textContent=owned?'고용됨':locked?'잠김':full?'정원 마감':!affordable?'자산 부족':'₩'+w.cost+'M 고용';
+      button.disabled=owned||locked||full||!affordable;
       if(locked)addLockIcon(button,w.level);
       button.onclick=()=>{
         state.assets-=w.cost;state.hired.push(w.id);state.staff[w.id]={level:1,xp:0};
@@ -567,7 +567,7 @@
   };
   const showFurniture = (page=0) => {
     page=Math.max(0,Math.min(page,Math.ceil(furniture.length/pageSize)-1));
-    showModal('<span class="modal-kicker">FURNITURE SHOP</span><h2 id="modalTitle">가구 구매</h2><p>오피스 LV.'+state.officeLevel+' · 보유 가구 '+state.ownedFurniture.length+'/'+furnitureCap[state.officeLevel-1]+'개. 구매한 가구는 배치 수정에서 옮길 수 있어요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="가구 목록 페이지"></nav>');
+    showModal('<span class="modal-kicker">FURNITURE SHOP</span><h2 id="modalTitle">가구 구매</h2><p>오피스 LV.'+state.officeLevel+' · 보유 가구 '+state.ownedFurniture.length+'/'+furnitureCap[state.officeLevel-1]+'개. 구매한 가구는 배치 수정에서 옮길 수 있어요. 컬렉션 제작비는 별도로 ₩38M이 필요해요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="가구 목록 페이지"></nav>');
     furniture.slice(page*pageSize,(page+1)*pageSize).forEach(f=>{
       const row=document.createElement('div');row.className='shop-row';
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+f.sprite+'.webp';img.alt='';img.loading='eager';img.decoding='async';img.width=72;img.height=72;
@@ -578,8 +578,9 @@
       const button=document.createElement('button');button.type='button';
       const locked=state.officeLevel<f.level,full=state.ownedFurniture.length>=furnitureCap[state.officeLevel-1];
       const price=furniturePrice[f.id];
-      button.textContent=locked?'잠김':full?'배치 한도':'₩'+price+'M 구매';
-      button.disabled=locked||full||state.assets-price<38;
+      const affordable=state.assets>=price;
+      button.textContent=locked?'잠김':full?'배치 한도':!affordable?'자산 부족':'₩'+price+'M 구매';
+      button.disabled=locked||full||!affordable;
       if(locked)addLockIcon(button,f.level);
       button.onclick=()=>{
         const id=f.id+'-'+(state.ownedFurniture.length+1);
