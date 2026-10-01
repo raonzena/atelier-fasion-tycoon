@@ -91,24 +91,23 @@
     research:0,unlocks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
-  try {
-    const saved = JSON.parse(localStorage.getItem('atelier-device-save') || 'null');
+  const hydrate = saved => {
     if(saved && saved.officeLevel >= 1 && saved.officeLevel <= 10 && Array.isArray(saved.placed)) {
-      state = {...initial(),...saved,localSave:true};
-      state.staff = saved.staff || {};
-      state.unlocks = Array.isArray(saved.unlocks) ? saved.unlocks : [];
-      state.history = Array.isArray(saved.history) ? saved.history : [];
-      state.hired = Array.isArray(saved.hired) ? saved.hired : workers.filter(w => saved.placed.some(p => p.id===w.id)).map(w => w.id);
-      state.ownedFurniture = Array.isArray(saved.ownedFurniture) ? saved.ownedFurniture : saved.placed.filter(p => furniture.some(f => f.id===p.id)).map(p => ({id:p.id,kind:p.id}));
-      state.loan = {
+      const loaded = {...initial(),...saved,localSave:true};
+      loaded.staff = saved.staff || {};
+      loaded.unlocks = Array.isArray(saved.unlocks) ? saved.unlocks : [];
+      loaded.history = Array.isArray(saved.history) ? saved.history : [];
+      loaded.hired = Array.isArray(saved.hired) ? saved.hired : workers.filter(w => saved.placed.some(p => p.id===w.id)).map(w => w.id);
+      loaded.ownedFurniture = Array.isArray(saved.ownedFurniture) ? saved.ownedFurniture : saved.placed.filter(p => furniture.some(f => f.id===p.id)).map(p => ({id:p.id,kind:p.id}));
+      loaded.loan = {
         principal:Number.isFinite(saved.loan?.principal)?Math.max(0,saved.loan.principal):0,
         interestDue:Number.isFinite(saved.loan?.interestDue)?Math.max(0,saved.loan.interestDue):0
       };
-      for(const id of state.hired) state.staff[id] = state.staff[id] || {level:1,xp:0};
+      for(const id of loaded.hired) loaded.staff[id] = loaded.staff[id] || {level:1,xp:0};
       if(saved.layoutVersion!==3){
-        const n=gridSizes[state.officeLevel-1],oldWidth=saved.layoutVersion===2?8:10,oldHeight=saved.layoutVersion===2?8:7;
+        const n=gridSizes[loaded.officeLevel-1],oldWidth=saved.layoutVersion===2?8:10,oldHeight=saved.layoutVersion===2?8:7;
         const used=new Set();
-        state.placed=state.placed.map(p=>{
+        loaded.placed=loaded.placed.map(p=>{
           let x=Math.min(n-1,Math.floor((p.x+.5)/oldWidth*n));
           let y=Math.min(n-1,Math.floor((p.y+.5)/oldHeight*n));
           if(used.has(x+','+y)){
@@ -117,10 +116,13 @@
           }
           used.add(x+','+y);return {...p,x,y};
         });
-        state.layoutVersion=3;
+        loaded.layoutVersion=3;
       }
+      return loaded;
     }
-  } catch {}
+    return initial();
+  };
+  try { state=hydrate(JSON.parse(localStorage.getItem('atelier-device-save') || 'null')); } catch {}
   let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTile=null;
   const definition = id => items.find(i => i.id === id) || furniture.find(i => state.ownedFurniture.some(o => o.id === id && o.kind === i.id));
   const itemName = id => {const d=definition(id);return d ? d.name : '알 수 없는 물건';};
@@ -134,7 +136,10 @@
   };
   const occupied = (x,y,except) => state.placed.some(p => p.id !== except && p.x === x && p.y === y);
   const upgradePrice = level => 95 + (level-1)*45;
-  const save = () => { if(state.localSave) localStorage.setItem('atelier-device-save',JSON.stringify(state)); };
+  const save = () => {
+    if(window.atelierCloud?.isSignedIn()) window.atelierCloud.queueSave(state);
+    else if(state.localSave) localStorage.setItem('atelier-device-save',JSON.stringify(state));
+  };
   const roundMoney = value => Math.round((value+Number.EPSILON)*10)/10;
   const money = value => roundMoney(value).toLocaleString('ko-KR',{maximumFractionDigits:1});
   const loanLimit = level => 60+(level-1)*40;
@@ -321,11 +326,18 @@
     $('launchButton').setAttribute('aria-label',editMode?'배치 저장':'새 컬렉션 만들기');
     $('actionIcon').src=editMode?'./assets/check-light.svg':'./assets/paw-light.svg';
     $('launchButton').querySelector('small').textContent=editMode?'배치 저장':'새 컬렉션';
-    $('guestBanner').innerHTML=state.localSave?'이 기기 저장 사용 중 · 다른 기기와 동기화되지 않습니다. <button type="button" id="saveInfo">저장 방식 보기</button>':'게스트 플레이 중 · 화면을 나가면 진행 내용이 사라집니다. <button type="button" id="saveInfo">저장 방식 보기</button>';
+    const cloud=window.atelierCloud?.status();
+    $('guestBanner').innerHTML=cloud?.user?'계정에 저장 중 · <span id="saveStatus"></span> <button type="button" id="saveInfo">계정 보기</button>':state.localSave?'이 기기 저장 사용 중 · 다른 기기와 동기화되지 않습니다. <button type="button" id="saveInfo">로그인 · 저장 방식</button>':'게스트 플레이 중 · 화면을 나가면 진행 내용이 사라집니다. <button type="button" id="saveInfo">로그인 · 저장 방식</button>';
+    if(cloud?.user)$('saveStatus').textContent=cloud.label;
     $('saveInfo').addEventListener('click',showSaveInfo);
     renderFloor();if(editMode)renderInventory();
   };
-  const closeModal = () => {if(isProducing)return;$('modalLayer').hidden=true;$('modalContent').replaceChildren();};
+  let accountChoiceResolve=null;
+  const closeModal = () => {
+    if(isProducing)return;
+    if(accountChoiceResolve){accountChoiceResolve(null);accountChoiceResolve=null;}
+    $('modalLayer').hidden=true;$('modalContent').replaceChildren();
+  };
   const showModal = html => {
     $('modalContent').innerHTML=html;
     $('modalContent').querySelectorAll('img[data-skeleton]').forEach(img=>{
@@ -337,8 +349,55 @@
     $('modalLayer').hidden=false;$('modalClose').hidden=isProducing;if(!isProducing)$('modalClose').focus();
   };
   const showSaveInfo = () => {
-    showModal('<span class="modal-kicker">PLAY DATA</span><h2 id="modalTitle">진행 내용 저장</h2><p>게스트 플레이는 새로고침하거나 앱을 닫으면 초기화됩니다. 아래 버튼으로 이 기기에만 저장할 수 있어요. 계정 로그인과 기기 간 동기화는 아직 구현되지 않았습니다.</p><button class="modal-primary" id="enableSave" type="button">'+(state.localSave?'지금 이 기기에 저장':'이 기기에 저장 시작')+'</button>');
+    if(window.atelierCloud?.isSignedIn()){showAccount();return;}
+    showModal('<span class="modal-kicker">PLAY DATA</span><h2 id="modalTitle">진행 내용 저장</h2><p>계정으로 로그인하면 다른 기기에서도 이어할 수 있어요. 게스트 플레이는 아래에서 이 브라우저에 저장할 수 있습니다.</p><button class="modal-primary" id="openAccount" type="button">로그인 · 회원가입</button><button class="account-secondary" id="enableSave" type="button">'+(state.localSave?'지금 이 기기에 저장':'이 기기에 저장 시작')+'</button>');
+    $('openAccount').onclick=()=>showAccount();
     $('enableSave').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기의 브라우저에 진행 내용이 저장됩니다.');};
+  };
+  const showAccount = (mode='login') => {
+    const cloud=window.atelierCloud;
+    if(!cloud?.isConfigured()){
+      showModal('<span class="modal-kicker">ATELIER ACCOUNT</span><h2 id="modalTitle">계정 저장 준비 중</h2><p>Firebase 프로젝트 연결을 마치면 로그인과 기기 간 저장을 사용할 수 있어요. 지금은 기기 저장을 사용할 수 있습니다.</p><button class="modal-primary" id="localInstead" type="button">기기 저장하기</button>');
+      $('localInstead').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기에 저장했어요.');};
+      return;
+    }
+    if(cloud.isSignedIn()){
+      const info=cloud.status();
+      showModal('<span class="modal-kicker">ATELIER ACCOUNT</span><h2 id="modalTitle">내 계정</h2><p class="account-email" id="accountEmail"></p><p id="accountSaveState"></p><button class="modal-primary" id="saveNow" type="button">지금 저장하기</button><button class="account-secondary" id="signOut" type="button">로그아웃</button>');
+      $('accountEmail').textContent=info.label;
+      $('accountSaveState').textContent=info.sync;
+      $('saveNow').onclick=async()=>{try{await cloud.saveNow(state);$('accountSaveState').textContent='계정에 저장됐어요.';toast('계정에 저장했어요.');}catch(error){$('accountSaveState').textContent=cloud.errorMessage(error);}};
+      $('signOut').onclick=async()=>{try{await cloud.signOut();closeModal();toast('로그아웃했어요.');}catch(error){$('accountSaveState').textContent=cloud.errorMessage(error);}};
+      return;
+    }
+    const signup=mode==='signup';
+    showModal('<span class="modal-kicker">ATELIER ACCOUNT</span><h2 id="modalTitle">'+(signup?'회원가입':'로그인')+'</h2><p>계정에 진행 내용을 저장하고 다른 기기에서 이어하세요.</p><div class="account-tabs"><button type="button" id="loginTab" class="'+(signup?'':'active')+'">로그인</button><button type="button" id="signupTab" class="'+(signup?'active':'')+'">회원가입</button></div><form id="accountForm" class="account-form"><label for="accountEmailInput">이메일</label><input id="accountEmailInput" type="email" autocomplete="email" required><label for="accountPassword">비밀번호</label><input id="accountPassword" type="password" minlength="6" autocomplete="'+(signup?'new-password':'current-password')+'" required><p class="account-error" id="accountError" role="alert"></p><button class="modal-primary" type="submit">'+(signup?'이메일로 가입':'이메일로 로그인')+'</button></form><button class="account-google" id="googleSignIn" type="button">Google 계정으로 계속하기</button>'+(signup?'':'<button class="account-link" id="resetPassword" type="button">비밀번호 재설정</button>'));
+    $('loginTab').onclick=()=>showAccount('login');$('signupTab').onclick=()=>showAccount('signup');
+    const report=error=>{$('accountError').textContent=cloud.errorMessage(error);$('accountForm').querySelector('button[type="submit"]').disabled=false;$('googleSignIn').disabled=false;};
+    $('accountForm').onsubmit=async event=>{
+      event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;$('accountError').textContent='';
+      try{await (signup?cloud.signUp:cloud.signIn)($('accountEmailInput').value.trim(),$('accountPassword').value);}catch(error){report(error);}
+    };
+    $('googleSignIn').onclick=async()=>{$('googleSignIn').disabled=true;$('accountError').textContent='';try{await cloud.signInGoogle();}catch(error){report(error);}};
+    if(!signup)$('resetPassword').onclick=async()=>{
+      const email=$('accountEmailInput').value.trim();if(!email){$('accountError').textContent='이메일을 먼저 입력해 주세요.';return;}
+      try{await cloud.resetPassword(email);$('accountError').textContent='재설정 메일을 보냈어요. 메일함을 확인해 주세요.';}catch(error){report(error);}
+    };
+  };
+  window.atelierGameBridge={
+    snapshot:()=>JSON.parse(JSON.stringify(state)),
+    hasProgress:()=>Boolean(state.companyName),
+    applyCloud:saved=>{state=hydrate(saved);editMode=false;selected=null;layoutSnapshot=null;$('startLayer').hidden=Boolean(state.companyName);closeModal();render();},
+    restoreGuest:()=>{try{state=hydrate(JSON.parse(localStorage.getItem('atelier-device-save')||'null'));}catch{state=initial();}editMode=false;selected=null;layoutSnapshot=null;$('startLayer').hidden=Boolean(state.companyName);render();},
+    refresh:()=>render(),
+    toast,
+    chooseSave:()=>new Promise(resolve=>{
+      if($('modalContent').querySelector('.account-form'))closeModal();
+      showModal('<span class="modal-kicker">SAVE DATA</span><h2 id="modalTitle">이어할 진행 내용 선택</h2><p>이 기기의 진행 내용과 계정에 저장된 진행 내용이 달라요. 선택하지 않은 내용은 계정에 덮어쓰지 않습니다.</p><button class="modal-primary" id="useCloud" type="button">계정 저장 내용 불러오기</button><button class="account-secondary" id="useDevice" type="button">이 기기 내용으로 계정 저장</button>');
+      accountChoiceResolve=resolve;
+      $('useCloud').onclick=()=>{accountChoiceResolve=null;resolve('cloud');closeModal();};
+      $('useDevice').onclick=()=>{accountChoiceResolve=null;resolve('device');closeModal();};
+    })
   };
   const showLoan = (focusRepayment=false) => {
     const limit=loanLimit(state.companyLevel),available=availableLoan(),balance=loanBalance();
@@ -712,7 +771,9 @@
   $('menuFurniture').onclick=()=>{setMenu(false);showFurniture(0);};
   $('menuLoan').onclick=()=>{setMenu(false);showLoan();};
   $('officeRepayButton').onclick=()=>showLoan(true);
+  $('menuAccount').onclick=()=>{setMenu(false);showAccount();};
   $('menuSave').onclick=()=>{setMenu(false);showSaveInfo();};
+  $('startSignIn').onclick=()=>showAccount();
   $('startForm').addEventListener('submit',event=>{
     event.preventDefault();
     const name=$('companyNameInput').value.trim();
@@ -769,7 +830,7 @@
   const saveLayout=()=>{
     if(!editMode)return;
     editMode=false;layoutSnapshot=null;selected=null;save();render();
-    setHint('배치를 저장했어요.');toast(state.localSave?'배치를 이 기기에 저장했어요.':'이번 플레이의 배치를 적용했어요.');
+    setHint('배치를 저장했어요.');toast(window.atelierCloud?.isSignedIn()?'배치를 계정에 저장하고 있어요.':state.localSave?'배치를 이 기기에 저장했어요.':'이번 플레이의 배치를 적용했어요.');
   };
   $('editButton').onclick=()=>{
     setMenu(false);

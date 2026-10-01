@@ -507,3 +507,22 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
  .office-loan button{grid-column:2;grid-row:1/4;align-self:center}
 }
 @media(prefers-reduced-motion:reduce){.level-up-star,.level-change b,.level-art-change strong{animation:none}}
+
+/* Account access, with the same lightweight palette as the game menus. */
+.start-signin,.account-secondary,.account-google,.account-link{display:block;width:100%;border:1px solid #e3b7bb;border-radius:10px;background:#fff6ef;color:#74475e;font:inherit;font-weight:800;cursor:pointer}
+.start-signin{margin-top:9px;padding:12px}
+.account-secondary,.account-google{margin-top:10px;padding:12px}
+.account-google{background:#fff;border-color:#d1c8c6;color:#42383e}
+.account-link{margin-top:9px;border:0;background:transparent;font-size:13px;text-decoration:underline}
+.account-tabs{display:flex;gap:6px;margin:15px 0}
+.account-tabs button{flex:1;padding:10px;border:1px solid #e8c7c2;border-radius:9px;background:#fff6ed;color:#735261;font:inherit;font-weight:750}
+.account-tabs button.active{background:#e57f91;color:white;border-color:#d76b82}
+.account-form{display:grid;gap:7px}
+.account-form label{font-size:14px;font-weight:800;color:#674355}
+.account-form input{width:100%;padding:11px;border:1px solid #d8b8be;border-radius:9px;background:#fff;color:#46313d;font:inherit;font-size:16px}
+.account-form .modal-primary{margin-top:3px}
+.account-error{min-height:18px;margin:0!important;color:#a64057!important;font-size:13px}
+.account-email{overflow-wrap:anywhere;font-weight:800}
+.account-form button:disabled,.account-google:disabled{opacity:.55;cursor:wait}
+.modal-layer{z-index:40}
+.toast{z-index:50}
