@@ -543,8 +543,10 @@
       if(!$('repayAmount').disabled)$('repayAmount').focus();
     }
   };
-  const availableItems = () => baseCategories.concat(has('hoodie')?['후드티']:[],has('bag')?['가방']:[]);
-  const availableMaterials = () => ['면'].concat(has('linen')?['리넨']:[],has('recycled')?['재생 원단']:[]);
+  const unlockedOptions=category=>researchProjects[category].filter(project=>has(project.id)).flatMap(project=>project.options||[]);
+  const availableItems = () => baseCategories.concat(has('hoodie')?['후드티']:[],has('bag')?['가방']:[],unlockedOptions('의류'));
+  const availableMaterials = () => ['면'].concat(unlockedOptions('소재'));
+  const availableStyles = () => styles.concat(unlockedOptions('스타일'));
   const levelBonus = w => Math.max(0,(state.staff[w.id]?.level||1)-1);
   const statLabels = [['design','디자인'],['sewing','봉제'],['trend','트렌드 감각'],['efficiency','생산 효율']];
   const roleStats = {
@@ -602,13 +604,23 @@
     if(participants){const bonuses=furnitureBonuses();for(const [key] of statLabels)rolls[key]+=bonuses[key];}
     return rolls;
   };
-  const researchDiscount=choices=>Number(has('patternResearch')&&['셔츠','바지'].includes(choices.item))+
+  const researchDiscount=choices=>Number(unlockedOptions('의류').includes(choices.item))+
+    Number(unlockedOptions('스타일').includes(choices.style))+
+    Number(has('patternResearch')&&['셔츠','바지'].includes(choices.item))+
     Number(has('silhouetteResearch')&&['원피스','아우터'].includes(choices.item))+
     Number(has('trendResearch')&&choices.style===currentTrend().style)+
     Number(has('styleResearch')&&choices.style!==currentTrend().style)+
     Number(has('customerResearch')&&choices.target===currentTrend().target)+
     Number(has('audienceResearch')&&choices.target!==currentTrend().target);
   const collectionGoal = (totals,matches,material,choices) => Math.max(1,Math.ceil(weightedStats(totals)*.45+3.5-matches*.65-(material?1:0)-researchDiscount(choices)));
+  const materialMatch=(choices,trend)=>
+    choices.material==='리넨'&&trend.season==='여름'||
+    choices.material==='재생 원단'&&choices.style==='아웃도어'||
+    ['울','아크릴','울+아크릴'].includes(choices.material)&&trend.season==='겨울'||
+    ['레이온','모달','리오셀'].includes(choices.material)&&trend.season==='여름'||
+    choices.material==='실크'&&['블라우스','원피스'].includes(choices.item)||
+    ['폴리에스터','나일론'].includes(choices.material)&&choices.item==='운동복'||
+    choices.material==='면+폴리에스터'&&['셔츠','바지'].includes(choices.item);
   const collectionTrial = (assigned,goal,random=Math.random) => {
     const rolls=rollStats(assigned,random),score=weightedStats(rolls);
     return {rolls,score,goal,success:score>=goal};
@@ -629,7 +641,7 @@
   const successChance = (choices,assigned) => {
     const trend=currentTrend();
     const matches=Number(choices.target===trend.target)+Number(choices.item===trend.item)+Number(choices.style===trend.style);
-    const material=choices.material==='리넨'&&trend.season==='여름'||choices.material==='재생 원단'&&choices.style==='아웃도어';
+    const material=materialMatch(choices,trend);
     const totals=teamStats(assigned),goal=collectionGoal(teamStats(assigned,true),matches,material,choices);
     if(!Object.values(assigned).some(Boolean))return [0,matches,totals,goal];
     // Use a fixed sequence so the preview stays stable while the actual trial remains random.
@@ -663,7 +675,7 @@
       $('chancePreview').textContent=(selectedCount?'예상 성공률 '+result[0]+'% · 합산 목표 '+result[3]+' · 트렌드 일치 '+result[1]+'/3':'참여할 직원을 선택해 주세요.')+' · 참여 직원 '+selectedCount+'/'+MAX_PRODUCTION_STAFF+'명'+(fashionWeek?' · 런웨이 입상 최소 14점':'');
       $('confirmLaunch').disabled=selectedCount===0;
     };
-    [['target','고객',targets],['item','의류',availableItems()],['style','스타일',styles],['material','소재',availableMaterials()]].forEach(groupData=>{
+    [['target','고객',targets],['item','의류',availableItems()],['style','스타일',availableStyles()],['material','소재',availableMaterials()]].forEach(groupData=>{
       const [key,label,values]=groupData;
       const group=document.createElement('div');group.className='choice-group';
       const heading=document.createElement('strong');heading.textContent=label;
@@ -857,20 +869,33 @@
   };
   const researchProjects={
     '소재':[
-      {id:'linen',name:'리넨 소재',cost:4,detail:'리넨을 사용할 수 있어요. 여름 컬렉션 제작 목표 −1'},
-      {id:'recycled',name:'재생 원단',cost:6,detail:'재생 원단을 사용할 수 있어요. 아웃도어 제작 목표 −1'}
+      {id:'linen',name:'리넨 소재',cost:4,group:'천연섬유',options:['리넨'],detail:'통풍이 좋은 마 소재 · 여름 제작 목표 −1'},
+      {id:'woolResearch',name:'울 소재',cost:6,group:'천연섬유',options:['울'],detail:'보온성이 좋은 소재 · 겨울 제작 목표 −1'},
+      {id:'silkResearch',name:'실크 소재',cost:7,group:'천연섬유',options:['실크'],detail:'광택이 있는 소재 · 블라우스·원피스 제작 목표 −1'},
+      {id:'regeneratedResearch',name:'재생섬유',cost:8,group:'재생섬유',options:['레이온','모달','리오셀'],detail:'레이온·모달·리오셀 · 여름 제작 목표 −1'},
+      {id:'syntheticResearch',name:'합성섬유',cost:8,group:'합성섬유',options:['폴리에스터','나일론','아크릴'],detail:'폴리에스터·나일론은 운동복, 아크릴은 겨울 제작 목표 −1'},
+      {id:'blendResearch',name:'혼방섬유',cost:9,group:'혼방섬유',options:['면+폴리에스터','울+아크릴'],detail:'면+폴리에스터는 셔츠·바지, 울+아크릴은 겨울 제작 목표 −1'},
+      {id:'recycled',name:'재생 원단',cost:6,group:'기타 소재',options:['재생 원단'],detail:'기존 재활용 원단 · 아웃도어 제작 목표 −1'}
     ],
     '의류':[
-      {id:'patternResearch',name:'기본 패턴 연구',cost:5,detail:'셔츠·바지 제작 목표 −1'},
-      {id:'silhouetteResearch',name:'실루엣 연구',cost:7,detail:'원피스·아우터 제작 목표 −1'}
+      {id:'patternResearch',name:'기본 패턴 연구',cost:5,group:'연구 효과',detail:'셔츠·바지 제작 목표 −1'},
+      {id:'silhouetteResearch',name:'실루엣 연구',cost:7,group:'연구 효과',detail:'원피스·아우터 제작 목표 −1'},
+      {id:'topsResearch',name:'다양한 상의',cost:7,group:'상의',options:['블라우스','니트','민소매'],detail:'블라우스·니트·민소매 선택 가능 · 해당 의류 제작 목표 −1'},
+      {id:'skirtResearch',name:'치마 패턴',cost:5,group:'하의',options:['치마'],detail:'치마 선택 가능 · 해당 의류 제작 목표 −1'},
+      {id:'outerwearResearch',name:'아우터 확장',cost:8,group:'아우터',options:['재킷','코트','패딩'],detail:'재킷·코트·패딩 선택 가능 · 해당 의류 제작 목표 −1'},
+      {id:'lifestyleResearch',name:'생활복',cost:7,group:'기타 의류',options:['잠옷','운동복'],detail:'잠옷·운동복 선택 가능 · 해당 의류 제작 목표 −1'}
     ],
     '스타일':[
-      {id:'trendResearch',name:'트렌드 분석',cost:5,detail:'이번 시즌 유행 스타일 제작 목표 −1'},
-      {id:'styleResearch',name:'스타일 응용',cost:7,detail:'유행과 다른 스타일 제작 목표 −1'}
+      {id:'trendResearch',name:'트렌드 분석',cost:5,group:'연구 효과',detail:'이번 시즌 유행 스타일 제작 목표 −1'},
+      {id:'styleResearch',name:'스타일 응용',cost:7,group:'연구 효과',detail:'유행과 다른 스타일 제작 목표 −1'},
+      {id:'everydayStyle',name:'일상 스타일',cost:6,group:'일상',options:['캐주얼','놈코어'],detail:'캐주얼·놈코어 선택 가능 · 해당 스타일 제작 목표 −1'},
+      {id:'formalStyle',name:'격식 있는 스타일',cost:7,group:'격식',options:['포멀','프레피'],detail:'포멀·프레피 선택 가능 · 해당 스타일 제작 목표 −1'},
+      {id:'heritageStyle',name:'빈티지·실용 스타일',cost:8,group:'개성',options:['아메카지','밀리터리'],detail:'아메카지·밀리터리 선택 가능 · 해당 스타일 제작 목표 −1'},
+      {id:'expressiveStyle',name:'감성 스타일',cost:9,group:'개성',options:['히피','발레코어'],detail:'히피·발레코어 선택 가능 · 해당 스타일 제작 목표 −1'}
     ],
     '고객':[
-      {id:'customerResearch',name:'고객 조사',cost:5,detail:'이번 시즌 주요 고객층 제작 목표 −1'},
-      {id:'audienceResearch',name:'신규 고객 탐색',cost:7,detail:'주요 고객층 이외 대상 제작 목표 −1'}
+      {id:'customerResearch',name:'고객 조사',cost:5,group:'고객 분석',detail:'이번 시즌 주요 고객층 제작 목표 −1'},
+      {id:'audienceResearch',name:'신규 고객 탐색',cost:7,group:'고객 분석',detail:'주요 고객층 이외 대상 제작 목표 −1'}
     ]
   };
   const researchDuration=project=>project.cost-2;
@@ -900,7 +925,13 @@
       button.setAttribute('aria-selected',String(name===category));button.className=name===category?'active':'';
       button.onclick=()=>showResearch(name);$('researchTabs').append(button);
     });
+    let currentGroup=null;
     researchProjects[category].forEach(project=>{
+      if(project.group!==currentGroup){
+        currentGroup=project.group;
+        const heading=document.createElement('h3');heading.className='research-group-heading';heading.textContent=currentGroup;
+        $('researchRows').append(heading);
+      }
       const row=document.createElement('div');row.className='research-row';
       const body=document.createElement('div');body.innerHTML='<strong>'+project.name+'</strong><small>'+project.detail+' · '+researchDuration(project)+'개월 소요</small>';
       const button=document.createElement('button');button.type='button';

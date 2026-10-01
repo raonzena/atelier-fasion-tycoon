@@ -11,6 +11,7 @@ const context={
   state:{monthsElapsed:0,staff:{yuna:{productionYear:1,productionCount:5}}},
   trends:[{season:'봄',style:'미니멀',item:'셔츠',target:'20대 직장인'}],
   has:key=>unlocks.has(key),
+  unlockedOptions:()=>[],
   weightedStats:()=>20
 };
 vm.createContext(context);
