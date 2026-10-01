@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(__dirname, '../dist/client/game.js'), '
 const start = source.indexOf('  const initial =');
 const end = source.indexOf('  try { state=hydrate', start);
 assert(start > 0 && end > start);
-const context = {OFFICE_MAX:12, COMPANY_MAX:12, workers:[], furniture:[{id:'breakroom',spanX:2},{id:'longRack',spanX:3},{id:'fridge'}], gridSizes:[3,4,4,5,5,6,6,7,7,8,8,8]};
+const context = {OFFICE_MAX:12, COMPANY_MAX:12, companyXpRequired:level=>2*4**(level-1), workers:[], furniture:[{id:'breakroom',spanX:2},{id:'longRack',spanX:3},{id:'fridge'}], gridSizes:[3,4,4,5,5,6,6,7,7,8,8,8]};
 vm.createContext(context);
 vm.runInContext(source.slice(start,end)+'\nthis.api={hydrate};',context);
 
@@ -20,6 +20,13 @@ const current=context.api.hydrate({layoutVersion:3,officeLevel:12,companyLevel:1
 assert.equal(current.monthsElapsed,24);
 assert.equal(current.companyLevel,12);
 assert.equal(current.officeLevel,12);
+assert.equal(current.companyXp,0);
+const legacyCompany=context.api.hydrate({calendarStartMonth:1,layoutVersion:5,officeLevel:3,releases:5,monthsElapsed:5,placed:[],hired:[]});
+assert.equal(legacyCompany.companyLevel,3);
+assert.equal(legacyCompany.companyXp,1);
+const experiencedCompany=context.api.hydrate({calendarStartMonth:1,companyXpVersion:1,companyXp:7,companyLevel:3,layoutVersion:5,officeLevel:3,releases:22,monthsElapsed:22,placed:[],hired:[]});
+assert.equal(experiencedCompany.companyLevel,3);
+assert.equal(experiencedCompany.companyXp,7);
 const researching=context.api.hydrate({layoutVersion:5,officeLevel:1,releases:1,monthsElapsed:1,placed:[],hired:[],researchTasks:[{id:'linen',finishMonth:2}]});
 assert.equal(researching.researchTasks.length,1);
 assert.equal(researching.monthsElapsed,3);

@@ -615,3 +615,4 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .research-group-heading{margin:18px 0 4px;padding-bottom:5px;border-bottom:2px solid #e8d5ca;color:#805268;font-size:14px}
 .research-row{border-top:0}.research-row + .research-row{border-top:2px solid #e8d5ca}
 .research-row>div{min-width:0}.research-row small{line-height:1.45}.research-row button{flex:none}
+.office-detail-grid strong{overflow-wrap:anywhere;font-variant-numeric:tabular-nums}

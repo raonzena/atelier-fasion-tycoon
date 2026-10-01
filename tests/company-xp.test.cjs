@@ -1,0 +1,26 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+
+const source=fs.readFileSync(path.join(__dirname,'../dist/client/game.js'),'utf8');
+const requiredStart=source.indexOf('  const companyXpRequired=');
+const requiredEnd=source.indexOf('  const employeeCap',requiredStart);
+const gainStart=source.indexOf('  const gainCompanyXp=');
+const gainEnd=source.indexOf('  const officeRequiredReleases=',gainStart);
+assert(requiredStart>0&&requiredEnd>requiredStart&&gainStart>0&&gainEnd>gainStart);
+const state={companyLevel:1,companyXp:0};
+const context={COMPANY_MAX:12,state};
+vm.createContext(context);
+vm.runInContext(source.slice(requiredStart,requiredEnd)+source.slice(gainStart,gainEnd)+'\nthis.api={companyXpRequired,gainCompanyXp};',context);
+const {companyXpRequired,gainCompanyXp}=context.api;
+assert.deepEqual([1,2,3,4,11].map(companyXpRequired),[2,8,32,128,2097152]);
+gainCompanyXp(1);assert.equal(state.companyLevel,1);assert.equal(state.companyXp,1);
+gainCompanyXp(1);assert.equal(state.companyLevel,2);assert.equal(state.companyXp,0);
+gainCompanyXp(7);assert.equal(state.companyLevel,2);assert.equal(state.companyXp,7);
+gainCompanyXp(1);assert.equal(state.companyLevel,3);assert.equal(state.companyXp,0);
+gainCompanyXp(33);assert.equal(state.companyLevel,4);assert.equal(state.companyXp,1);
+state.companyLevel=11;state.companyXp=companyXpRequired(11)-1;
+gainCompanyXp(1);assert.equal(state.companyLevel,12);assert.equal(state.companyXp,0);
+gainCompanyXp(1);assert.equal(state.companyLevel,12);assert.equal(state.companyXp,0);
+console.log('Company XP requirements quadruple, carry excess XP, and stop at max level.');

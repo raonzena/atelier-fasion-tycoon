@@ -58,6 +58,7 @@
   }
   // Each larger office layout adds staff capacity on top of its level.
   const OFFICE_MAX=12,COMPANY_MAX=12;
+  const companyXpRequired=level=>2*4**(level-1);
   const employeeCap = Array.from({length:OFFICE_MAX},(_,index)=>{
     const level=index+1;
     return level+(level>=8?3:level>=4?2:1);
@@ -98,7 +99,7 @@
   const styles = ['미니멀','스트리트','클래식','러블리','아웃도어'];
   const targets = ['20대 직장인','10대 학생','아웃도어 고객'];
   const initial = () => ({
-    layoutVersion:5,calendarStartMonth:1,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
+    layoutVersion:5,calendarStartMonth:1,companyXpVersion:1,companyXp:0,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
     research:0,unlocks:[],researchTasks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
@@ -110,7 +111,15 @@
       const monthOffset=saved.calendarStartMonth===1?0:2;
       loaded.monthsElapsed=(Number.isInteger(saved.monthsElapsed)&&saved.monthsElapsed>=0?saved.monthsElapsed:saved.releases*3)+monthOffset;
       loaded.calendarStartMonth=1;
-      loaded.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(loaded.releases/2));
+      if(saved.companyXpVersion===1){
+        loaded.companyLevel=Math.min(COMPANY_MAX,Math.max(1,Number.isInteger(saved.companyLevel)?saved.companyLevel:1));
+        loaded.companyXp=loaded.companyLevel===COMPANY_MAX?0:Math.min(companyXpRequired(loaded.companyLevel)-1,Math.max(0,Number.isInteger(saved.companyXp)?saved.companyXp:0));
+      }else{
+        // Existing players keep the level earned under the old two-releases rule.
+        loaded.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(loaded.releases/2));
+        loaded.companyXp=loaded.companyLevel===COMPANY_MAX?0:loaded.releases%2;
+      }
+      loaded.companyXpVersion=1;
       loaded.staff = saved.staff || {};
       loaded.unlocks = Array.isArray(saved.unlocks) ? saved.unlocks : [];
       loaded.researchTasks = Array.isArray(saved.researchTasks) ? saved.researchTasks.filter(task=>
@@ -179,6 +188,15 @@
     return member?.productionYear===year?Math.min(MAX_YEARLY_PRODUCTIONS,Math.max(0,member.productionCount||0)):0;
   };
   const remainingParticipations=id=>MAX_YEARLY_PRODUCTIONS-participationCount(id);
+  const gainCompanyXp=amount=>{
+    if(state.companyLevel>=COMPANY_MAX)return;
+    state.companyXp+=amount;
+    while(state.companyLevel<COMPANY_MAX&&state.companyXp>=companyXpRequired(state.companyLevel)){
+      state.companyXp-=companyXpRequired(state.companyLevel);
+      state.companyLevel++;
+    }
+    if(state.companyLevel===COMPANY_MAX)state.companyXp=0;
+  };
   const officeRequiredReleases=level=>level*2;
   const definition = id => items.find(i => i.id === id) || furniture.find(i => state.ownedFurniture.some(o => o.id === id && o.kind === i.id));
   const itemName = id => {const d=definition(id);return d ? d.name : '알 수 없는 물건';};
@@ -205,6 +223,7 @@
   const money = value => roundMoney(value).toLocaleString('ko-KR',{maximumFractionDigits:1});
   const loanLimit = level => 60+(level-1)*40;
   const loanRate = level => .08-(level-1)*.005;
+  const customerRevenueBonus=customers=>Math.round(Math.max(0,customers)*.5);
   const loanBalance = () => roundMoney(state.loan.principal+state.loan.interestDue);
   const availableLoan = () => Math.max(0,Math.floor(roundMoney(loanLimit(state.companyLevel)-state.loan.principal)));
   const borrowLoan = amount => {
@@ -806,7 +825,8 @@
     const runway=fashionWeek?judgeFashionWeek(outcome.rolls):null;
     const success=outcome.success;
     const score=Math.max(20,Math.min(100,Math.round(65+(outcome.score/outcome.goal-1)*60+(success?8:-8))));
-    const revenue=Math.round(score*(success?1.8:1.12)+state.companyLevel*4);
+    const customerBonus=customerRevenueBonus(state.customers);
+    const revenue=Math.round(score*(success?1.8:1.12)+state.companyLevel*4)+customerBonus;
     const gained=Math.round((score-48)*3.7);
     const points=success?3:2;
     const salaryPaid=monthlyPayroll();
@@ -830,7 +850,7 @@
     state.releases++;
     state.monthsElapsed++;
     const completedResearch=finishResearch();
-    state.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(state.releases/2));
+    gainCompanyXp(1);
     const discoveries=[];
     if(state.releases===2&&!has('hoodie')){state.unlocks.push('hoodie');discoveries.push('후드티');}
     if(state.releases===5&&!has('bag')){state.unlocks.push('bag');discoveries.push('가방');}
@@ -840,6 +860,8 @@
     state.history=state.history.slice(0,8);save();render();
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
     const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.level===10&&!w.leveled?'최대 레벨':'+1 XP')+'</span></div>').join('')+'</div>';
+    const companyXpReport='<div class="report-line">회사 경험치 <strong>'+(beforeCompanyLevel===COMPANY_MAX?'최대 레벨':'+1 XP · '+(state.companyLevel===COMPANY_MAX?'최대 레벨':state.companyXp.toLocaleString('ko-KR')+' / '+companyXpRequired(state.companyLevel).toLocaleString('ko-KR')+' XP'))+'</strong></div>';
+    const customerReport='<div class="report-line">고객 기반 매출 보너스 <strong>+₩'+money(customerBonus)+'M · 기존 고객 '+previous.customers.toLocaleString('ko-KR')+'명</strong></div>';
     const salaryReport='<div class="report-line">이번 달 직원 월급 <strong>−₩'+money(salaryPaid)+'M · '+state.hired.length+'명</strong></div>';
     const loanReport=chargedInterest?'<div class="report-line">이번 달 대출 이자 <strong>+₩'+money(chargedInterest)+'M · 총 상환액 ₩'+money(loanBalance())+'M</strong></div>':'';
     const companyLevelUp=state.companyLevel>beforeCompanyLevel?levelUpPanel('회사 LV.'+state.companyLevel+' 달성!',[
@@ -854,7 +876,7 @@
     pendingLevelUp=companyLevelUp+staffLevelUp||null;
     const runwayReport=runway?'<section class="runway-report"><div class="fashion-week-preview compact"><img data-skeleton src="./assets/'+fashionWeekArtwork(trend.season)+'" alt="패션위크 런웨이"></div><h3>'+(runway.rank?runway.rank+'위 입상!':'이번 패션위크는 입상하지 못했어요')+'</h3><p>네 능력 가중 합계 '+runway.score.toFixed(1)+'점 · 최소 입상 기준 14점</p><div class="runway-stat-grid">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><ol class="runway-podium">'+runway.podium.map((entry,index)=>'<li class="'+(entry.player?'our-brand':'')+'"><span>'+ (index+1)+'위 · '+entry.name+'</span><strong>'+entry.score.toFixed(1)+'점</strong></li>').join('')+'</ol><p class="runway-prize">'+(runway.prize?'패션위크 상금 +₩'+money(runway.prize)+'M':'상금 없음 · 다음 패션위크에 다시 도전해 보세요')+'</p></section>':'';
     const resultHero='<div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div>';
-    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+salaryReport+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+(completedResearch.length?'<p class="discovery">연구 완료: '+completedResearch.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+customerReport+companyXpReport+salaryReport+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+(completedResearch.length?'<p class="discovery">연구 완료: '+completedResearch.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
   const showStaff = (role='디자인') => {
@@ -1125,7 +1147,8 @@
   };
   const showOfficeInfo = () => {
     const level=state.officeLevel,top=level===OFFICE_MAX;
-    showModal('<span class="modal-kicker">MY ATELIER · YEAR '+calendarYear()+' · '+currentMonth()+'월</span><h2 id="modalTitle">'+offices[level-1]+'</h2><p>오피스 LV. '+level+' / '+OFFICE_MAX+'</p><div class="office-detail-grid"><div><span>직원 수용</span><strong>'+state.hired.length+' / '+employeeCap[level-1]+'명</strong></div><div><span>가구 배치</span><strong>'+state.ownedFurniture.length+' / '+furnitureCap[level-1]+'개</strong></div><div><span>컬렉션 출시</span><strong>'+state.releases+'회</strong></div><div><span>확장 경험</span><strong>'+(top?'Max':state.releases+' / '+officeRequiredReleases(level)+'회')+'</strong></div><div><span>연구 포인트</span><strong>'+state.research+'P</strong></div></div><p class="office-upgrade-note">'+(top?'최고 레벨의 오피스입니다.':'다음 확장: ₩'+upgradePrice(level)+'M · 컬렉션 '+officeRequiredReleases(level)+'회 출시 필요 · 확장 후 제작비 ₩38M 유지')+'</p>'+(top?'':'<button class="modal-primary" id="upgradeButton" type="button">오피스 확장하기</button>'));
+    const companyProgress=state.companyLevel===COMPANY_MAX?'Max':state.companyXp.toLocaleString('ko-KR')+' / '+companyXpRequired(state.companyLevel).toLocaleString('ko-KR')+' XP';
+    showModal('<span class="modal-kicker">MY ATELIER · YEAR '+calendarYear()+' · '+currentMonth()+'월</span><h2 id="modalTitle">'+offices[level-1]+'</h2><p>오피스 LV. '+level+' / '+OFFICE_MAX+'</p><div class="office-detail-grid"><div><span>회사 레벨</span><strong>LV.'+state.companyLevel+'</strong></div><div><span>회사 경험치</span><strong>'+companyProgress+'</strong></div><div><span>직원 수용</span><strong>'+state.hired.length+' / '+employeeCap[level-1]+'명</strong></div><div><span>가구 배치</span><strong>'+state.ownedFurniture.length+' / '+furnitureCap[level-1]+'개</strong></div><div><span>컬렉션 출시</span><strong>'+state.releases+'회</strong></div><div><span>확장 경험</span><strong>'+(top?'Max':state.releases+' / '+officeRequiredReleases(level)+'회')+'</strong></div><div><span>연구 포인트</span><strong>'+state.research+'P</strong></div></div><p class="office-upgrade-note">'+(top?'최고 레벨의 오피스입니다.':'다음 확장: ₩'+upgradePrice(level)+'M · 컬렉션 '+officeRequiredReleases(level)+'회 출시 필요 · 확장 후 제작비 ₩38M 유지')+'</p>'+(top?'':'<button class="modal-primary" id="upgradeButton" type="button">오피스 확장하기</button>'));
     if(!top)$('upgradeButton').onclick=showUpgrade;
   };
   const cancelLayout=()=>{
