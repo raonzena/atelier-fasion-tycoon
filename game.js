@@ -171,7 +171,32 @@
     }
     return initial();
   };
-  try { state=hydrate(JSON.parse(localStorage.getItem('atelier-device-save') || 'null')); } catch {}
+  const newCompanyId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'company-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+  const companyRecord = company => {
+    const {otherCompanies,...progress}=company;
+    return {id:company.companyId,state:progress};
+  };
+  const hydratePortfolio = saved => {
+    const loaded=hydrate(saved);
+    loaded.companyId=typeof saved?.companyId==='string'&&saved.companyId?saved.companyId:newCompanyId();
+    const seen=new Set([loaded.companyId]);
+    loaded.otherCompanies=(Array.isArray(saved?.otherCompanies)?saved.otherCompanies:[]).filter(entry=>{
+      if(!entry||typeof entry.id!=='string'||!entry.id||seen.has(entry.id)||!entry.state||typeof entry.state.companyName!=='string'||!entry.state.companyName||!Array.isArray(entry.state.placed))return false;
+      seen.add(entry.id);return true;
+    }).map(entry=>({id:entry.id,state:hydrate(entry.state)}));
+    return loaded;
+  };
+  const switchToCompany = (current,next) => {
+    const remaining=current.otherCompanies.filter(entry=>entry.id!==next.id);
+    const switched=hydratePortfolio({...next.state,companyId:next.id,otherCompanies:[...remaining,companyRecord(current)]});
+    switched.localSave=current.localSave;
+    return switched;
+  };
+  const startNewCompany = (current,name) => ({
+    ...initial(),companyName:name.slice(0,20),companyId:newCompanyId(),
+    otherCompanies:[...current.otherCompanies,companyRecord(current)],localSave:current.localSave
+  });
+  try { state=hydratePortfolio(JSON.parse(localStorage.getItem('atelier-device-save') || 'null')); } catch {}
   let editMode = false, selected = null, toastTimer, layoutSnapshot=null, isProducing=false,dragTargetTiles=[],eventVenueActive=false,eventVenueSeason=null;
   const currentMonth=()=>state.monthsElapsed%12+1;
   const calendarYear=()=>1+Math.floor(state.monthsElapsed/12);
@@ -535,8 +560,8 @@
     finishStartup,
     snapshot:()=>JSON.parse(JSON.stringify(state)),
     hasProgress:()=>Boolean(state.companyName),
-    applyCloud:saved=>{state=hydrate(saved);editMode=false;selected=null;layoutSnapshot=null;$('startLayer').hidden=Boolean(state.companyName);closeModal();render();},
-    restoreGuest:()=>{try{state=hydrate(JSON.parse(localStorage.getItem('atelier-device-save')||'null'));}catch{state=initial();}editMode=false;selected=null;layoutSnapshot=null;$('startLayer').hidden=Boolean(state.companyName);render();},
+    applyCloud:saved=>{state=hydratePortfolio(saved);editMode=false;selected=null;layoutSnapshot=null;$('startLayer').hidden=Boolean(state.companyName);closeModal();render();},
+    restoreGuest:()=>{try{state=hydratePortfolio(JSON.parse(localStorage.getItem('atelier-device-save')||'null'));}catch{state=hydratePortfolio(null);}editMode=false;selected=null;layoutSnapshot=null;$('startLayer').hidden=Boolean(state.companyName);render();},
     refresh:()=>render(),
     toast,
     chooseSave:()=>new Promise(resolve=>{
@@ -1100,6 +1125,40 @@
   $('officeRepayButton').onclick=()=>showLoan(true);
   $('menuAccount').onclick=()=>{setMenu(false);showSaveInfo();};
   $('menuCollection').onclick=()=>{setMenu(false);showCollections();};
+  const changeCompany = next => {
+    state=switchToCompany(state,next);
+    editMode=false;selected=null;layoutSnapshot=null;
+    closeModal();save();render();toast(state.companyName+' 회사로 전환했어요.');
+  };
+  const showCompanies = () => {
+    if(editMode){toast('배치 수정을 마친 뒤 회사를 전환해 주세요.');return;}
+    showModal('<span class="modal-kicker">MY COMPANIES</span><h2 id="modalTitle">내 회사</h2><p>회사를 전환해도 각 회사의 직원, 자산, 연구와 컬렉션 기록은 따로 유지됩니다.</p><div class="company-list" id="companyList"></div><button class="modal-primary" id="createCompany" type="button">새로운 회사 만들기</button>');
+    const list=$('companyList');
+    const entries=[companyRecord(state),...state.otherCompanies];
+    for(const entry of entries){
+      const row=document.createElement('div');row.className='company-row';
+      const info=document.createElement('div');
+      const name=document.createElement('strong');name.textContent=entry.state.companyName;
+      const detail=document.createElement('span');detail.textContent='회사 LV.'+entry.state.companyLevel+' · '+entry.state.releases+'회 출시';
+      info.append(name,detail);row.append(info);
+      if(entry.id===state.companyId){const current=document.createElement('span');current.className='company-current';current.textContent='플레이 중';row.append(current);}
+      else{const button=document.createElement('button');button.type='button';button.textContent='전환';button.setAttribute('aria-label',entry.state.companyName+' 회사로 전환');button.onclick=()=>changeCompany(entry);row.append(button);}
+      list.append(row);
+    }
+    $('createCompany').onclick=showCreateCompany;
+  };
+  const showCreateCompany = () => {
+    showModal('<span class="modal-kicker">ATELIER · NEW COMPANY</span><h2 id="modalTitle">새로운 회사 만들기</h2><p>현재 회사의 진행 내용은 그대로 보관됩니다. 새 회사는 자산 ₩180M과 빈 사무실에서 시작해요.</p><form class="account-form" id="newCompanyForm"><label for="newCompanyName">회사 이름</label><input id="newCompanyName" maxlength="20" autocomplete="off" required placeholder="예: 고양이 아틀리에"><button class="modal-primary" type="submit">회사 설립하기</button></form><button class="account-secondary" id="backToCompanies" type="button">내 회사로 돌아가기</button>');
+    $('backToCompanies').onclick=showCompanies;
+    $('newCompanyForm').onsubmit=event=>{
+      event.preventDefault();const name=$('newCompanyName').value.trim();if(!name)return;
+      state=startNewCompany(state,name);
+      editMode=false;selected=null;layoutSnapshot=null;
+      closeModal();save();render();toast(state.companyName+' 설립 완료! 기존 회사는 회사 관리에서 다시 선택할 수 있어요.');
+    };
+    $('newCompanyName').focus();
+  };
+  $('menuCompanies').onclick=()=>{setMenu(false);showCompanies();};
   $('startSignIn').onclick=()=>showAccount();
   $('startForm').addEventListener('submit',event=>{
     event.preventDefault();

@@ -561,6 +561,10 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .account-form .modal-primary{margin-top:3px}
 .account-error{min-height:18px;margin:0!important;color:#a64057!important;font-size:13px}
 .account-email{overflow-wrap:anywhere;font-weight:800}
+.company-list{display:grid;gap:9px;margin:17px 0 8px}
+.company-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #e8c9c5;border-radius:11px;background:#fff7ef}
+.company-row>div{min-width:0}.company-row strong{display:block;overflow-wrap:anywhere;color:#5a3c4c}.company-row span{display:block;margin-top:3px;color:#786873;font-size:13px}
+.company-row .company-current{flex:none;margin:0;font-weight:800;color:#a45b72}.company-row button{flex:none;padding:8px 12px;border:1px solid #dca6ac;border-radius:8px;background:#fff;color:#784758;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .account-form button:disabled,.account-google:disabled{opacity:.55;cursor:wait}
 .modal-layer{z-index:40}
 .toast{z-index:50}
