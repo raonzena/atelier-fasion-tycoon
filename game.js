@@ -51,7 +51,7 @@
   // Each larger office layout adds staff capacity on top of its level.
   const employeeCap = Array.from({length:10},(_,index)=>{
     const level=index+1;
-    return level+(level>=8?3:level>=4?2:0);
+    return level+(level>=8?3:level>=4?2:1);
   });
   const furnitureCap = [2,3,4,5,6,7,8,9,10,11];
   const furniturePrice = {designDesk:18,sewingDesk:22,rack:16,photo:30,moodboard:26,lounge:36};
