@@ -470,6 +470,40 @@ img[data-skeleton]:not(.image-ready){border-radius:10px;filter:none}
 .loan-form button:disabled,.loan-repay-all:disabled{background:#ded0ce;color:#75676d;cursor:default}
 .loan-repay-all{width:100%;margin-top:3px;background:#82617b}
 
-/* Counter-scale sprites as the illustrated office grows from 70% to 100%. */
+/* Counter-scale sprites as the illustrated office grows from 58% to 100%. */
 .room-world .piece{width:var(--piece-size,10%);height:var(--piece-size,10%);transition:left .18s,top .18s,width .45s,height .45s}
 @media(max-width:680px){.room-world .piece{width:var(--piece-size-mobile,12%);height:var(--piece-size-mobile,12%)}}
+
+/* Level-up celebration and count changes */
+.level-up-panel{margin:14px 0;padding:10px;border:1px solid #f1cbbd;border-radius:15px;background:#fff8ec}
+.level-up-head{position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:130px;overflow:hidden;border-radius:12px;background:radial-gradient(circle,#fff8d7 5%,#ffe2d5 90%);text-align:center}
+.level-up-head>*:not(.celebration){position:relative;z-index:2}
+.level-up-star{font-size:39px;line-height:1;color:#ed8ca3;animation:result-pop .65s cubic-bezier(.2,1.6,.45,1) both}
+.level-up-head strong{font-size:21px;color:#aa5473}
+.level-up-head small{margin-top:3px;font-size:12px;color:#7d6470}
+.level-changes{display:grid;gap:7px;margin-top:10px}
+.level-employee-name{padding:7px 4px 1px;font-size:13px;font-weight:800;color:#a85777}
+.level-change{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border:1px solid #f1d8ca;border-radius:10px;background:#fffdfa}
+.level-change>span{font-size:12px;font-weight:800;color:#765664}
+.level-change>div{display:flex;align-items:center;gap:5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.level-change small{font-size:11px;color:#99828a}.level-change em{font-size:13px;font-style:normal;color:#aa8493}
+.level-change strong{font-size:18px;color:#ad5477}
+.level-change b{padding:3px 6px;border-radius:99px;background:#ffe4ad;color:#935070;font-size:11px;animation:level-gain .75s ease-out both}
+.level-change b.decrease{background:#dcf2ea;color:#508575}
+.level-art-change strong{font-size:12px;text-align:right;animation:level-gain .75s ease-out both}
+@keyframes level-gain{0%{transform:scale(.5) translateY(8px);opacity:0}60%{transform:scale(1.14) translateY(-3px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+
+/* Compact loan balance appears below the office identity only while borrowing. */
+.office-panel .office-loan{gap:5px;padding:9px 10px;background:#fff2e7;border-color:#eabdb5}
+.office-panel #officeLoanBalance{font-size:20px;line-height:1.1;color:#ad5874;font-variant-numeric:tabular-nums}
+.office-loan-rate{font-size:10px;color:#765b67}.office-loan-rate b{color:#ae5976}
+.office-loan button{padding:6px 13px;border:0;border-radius:8px;background:#c77189;color:#fff;font-size:11px;font-weight:800}
+@media(max-width:680px){
+ .office-panel{flex-wrap:wrap}
+ .office-panel .office-loan{order:3;flex:1 1 100%;display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left}
+ .office-loan .eyebrow{grid-column:1;grid-row:1}
+ .office-panel #officeLoanBalance{grid-column:1;grid-row:2;font-size:17px}
+ .office-loan-rate{grid-column:1;grid-row:3}
+ .office-loan button{grid-column:2;grid-row:1/4;align-self:center}
+}
+@media(prefers-reduced-motion:reduce){.level-up-star,.level-change b,.level-art-change strong{animation:none}}

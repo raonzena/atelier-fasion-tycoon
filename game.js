@@ -59,6 +59,7 @@
   const gridSizes=[3,4,4,5,5,6,6,7,7,8];
   const bounds=gridSizes.map(n=>[0,n-1,0,n-1]);
   const gridSize=()=>gridSizes[state.officeLevel-1];
+  const officeArtworkWidth=level=>58+(level-1)*42/9;
   // The painted room is slightly asymmetric: the left and right floor edges
   // have different slopes. Keep drawing and pointer hit-testing on one basis.
   const FLOOR_ORIGIN={left:54,top:28};
@@ -282,15 +283,21 @@
     $('customerValue').textContent=state.customers.toLocaleString()+'명';
     $('officeTitle').textContent=offices[state.officeLevel-1];
     $('officeLevel').textContent='오피스 LV. '+state.officeLevel+' / 10';
+    const debt=loanBalance();
+    $('officeLoan').hidden=debt===0;
+    if(debt){
+      $('officeLoanBalance').textContent='₩'+money(debt)+'M';
+      $('officeLoanRate').textContent=(loanRate(state.companyLevel)*100).toFixed(1)+'%';
+    }
     $('year').textContent=1+Math.floor(state.releases/4);
     const trend=trends[state.releases%trends.length];
     $('season').textContent=trend.season;
     $('trend').textContent='트렌드 · '+trend.style+' '+trend.item;
-    const worldWidth=70+(state.officeLevel-1)*30/9;
+    const worldWidth=officeArtworkWidth(state.officeLevel);
     $('roomWorld').style.width=worldWidth+'%';
     // The painted office expands, but sprites and their hit targets keep the same screen size.
-    $('roomWorld').style.setProperty('--piece-size',10*70/worldWidth+'%');
-    $('roomWorld').style.setProperty('--piece-size-mobile',12*70/worldWidth+'%');
+    $('roomWorld').style.setProperty('--piece-size',700/worldWidth+'%');
+    $('roomWorld').style.setProperty('--piece-size-mobile',840/worldWidth+'%');
     const backdrop=$('roomBackdrop');
     const artwork=(state.officeLevel<4?'office-pastel':state.officeLevel<8?'office-mid':'office-high')+'.webp';
     if(backdrop.dataset.artwork!==artwork){
@@ -333,7 +340,7 @@
     showModal('<span class="modal-kicker">PLAY DATA</span><h2 id="modalTitle">진행 내용 저장</h2><p>게스트 플레이는 새로고침하거나 앱을 닫으면 초기화됩니다. 아래 버튼으로 이 기기에만 저장할 수 있어요. 계정 로그인과 기기 간 동기화는 아직 구현되지 않았습니다.</p><button class="modal-primary" id="enableSave" type="button">'+(state.localSave?'지금 이 기기에 저장':'이 기기에 저장 시작')+'</button>');
     $('enableSave').onclick=()=>{state.localSave=true;save();render();closeModal();toast('이 기기의 브라우저에 진행 내용이 저장됩니다.');};
   };
-  const showLoan = () => {
+  const showLoan = (focusRepayment=false) => {
     const limit=loanLimit(state.companyLevel),available=availableLoan(),balance=loanBalance();
     const repayMax=roundMoney(Math.min(state.assets,balance));
     showModal('<span class="modal-kicker">ATELIER FINANCE</span><h2 id="modalTitle">대출 관리</h2><p>회사 LV.'+state.companyLevel+' · 컬렉션을 출시할 때마다 남은 원금에 시즌 이자가 붙습니다. 미납 이자에는 이자가 붙지 않아요.</p><div class="loan-summary"><div><span>원금 한도</span><strong>₩'+money(limit)+'M</strong></div><div><span>현재 이자율</span><strong>'+ (loanRate(state.companyLevel)*100).toFixed(1)+'%</strong></div><div><span>남은 원금</span><strong>₩'+money(state.loan.principal)+'M</strong></div><div><span>미납 이자</span><strong>₩'+money(state.loan.interestDue)+'M</strong></div><div><span>총 상환액</span><strong>₩'+money(balance)+'M</strong></div><div><span>추가 대출 가능</span><strong>₩'+money(available)+'M</strong></div></div><p class="loan-note">회사 레벨마다 한도 +₩40M, 이자율 −0.5%p · 중간 상환은 이자부터 차감됩니다. 다음 출시에는 현재 회사 레벨의 이자율이 적용돼요.</p><form id="borrowForm" class="loan-form"><label for="borrowAmount">대출 금액 (₩M)</label><div><input id="borrowAmount" type="number" min="1" max="'+available+'" step="1" inputmode="numeric" required placeholder="1 ~ '+available+'" '+(available?'':'disabled')+'><button type="submit" '+(available?'':'disabled')+'>대출하기</button></div></form><form id="repayForm" class="loan-form"><label for="repayAmount">중간 상환 금액 (₩M)</label><div><input id="repayAmount" type="number" min="0.1" max="'+repayMax+'" step="0.1" inputmode="decimal" required placeholder="최대 '+money(repayMax)+'" '+(repayMax>=.1?'':'disabled')+'><button type="submit" '+(repayMax>=.1?'':'disabled')+'>일부 상환</button></div></form><button id="repayAll" class="loan-repay-all" type="button" '+(balance>0&&state.assets>=balance?'':'disabled')+'>전액 상환 · ₩'+money(balance)+'M</button>');
@@ -352,6 +359,10 @@
       if(!repayLoan(amount)){toast('상환 가능한 자산이 부족해요.');return;}
       save();render();showLoan();toast('대출 전액 상환 완료!');
     };
+    if(focusRepayment){
+      $('repayForm').scrollIntoView({block:'center'});
+      if(!$('repayAmount').disabled)$('repayAmount').focus();
+    }
   };
   const availableItems = () => baseCategories.concat(has('hoodie')?['후드티']:[],has('bag')?['가방']:[]);
   const availableMaterials = () => ['면'].concat(has('linen')?['리넨']:[],has('recycled')?['재생 원단']:[]);
@@ -503,6 +514,30 @@
     [-112,-64],[-85,-109],[-34,-116],[21,-108],[81,-103],[116,-58],
     [106,29],[69,83],[14,105],[-48,94],[-101,51],[-122,-8]
   ].map(([x,y],i)=>'<i style="--x:'+x+'px;--y:'+y+'px;--hue:'+[344,35,49,178][i%4]+'"></i>').join('')+'</div>';
+  const levelChange = (label,before,after,unit='',deltaUnit=unit,decimals=0) => {
+    const format=value=>decimals?value.toFixed(decimals):String(value);
+    const delta=Number((after-before).toFixed(decimals));
+    return '<div class="level-change"><span>'+label+'</span><div><small>'+format(before)+unit+'</small><em aria-hidden="true">→</em><strong data-level-from="'+before+'" data-level-to="'+after+'" data-level-unit="'+unit+'" data-level-decimals="'+decimals+'">'+format(before)+unit+'</strong><b class="'+(delta<0?'decrease':'increase')+'">'+(delta>0?'+':'')+format(delta)+deltaUnit+'</b></div></div>';
+  };
+  const levelUpPanel = (title,changes,subtitle) => '<section class="level-up-panel"><div class="level-up-head">'+celebration()+'<span class="level-up-star" aria-hidden="true">✦</span><strong>'+title+'</strong><small>'+subtitle+'</small></div><div class="level-changes">'+changes.join('')+'</div></section>';
+  const animateLevelChanges = () => {
+    const counters=[...$('modalContent').querySelectorAll('[data-level-from]')];
+    const update=progress=>counters.forEach(node=>{
+      const from=Number(node.dataset.levelFrom),to=Number(node.dataset.levelTo),decimals=Number(node.dataset.levelDecimals);
+      const value=from+(to-from)*progress;
+      node.textContent=(decimals?value.toFixed(decimals):Math.round(value))+node.dataset.levelUnit;
+    });
+    const reduced=typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduced){update(1);return;}
+    const start=performance.now();
+    const tick=now=>{
+      if(!counters[0]?.isConnected)return;
+      const progress=Math.min(1,(now-start)/750);
+      update(1-Math.pow(1-progress,3));
+      if(progress<1)requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
   const launch = (choices,assigned,outcome) => {
     if(!Object.values(assigned).some(Boolean)){toast('직원을 한 명 이상 배정해 주세요.');return;}
     const previous={assets:state.assets,customers:state.customers,research:state.research};
@@ -520,12 +555,14 @@
     const xpChanges=[];
     for(const w of hiredWorkers()) if(assigned[w.id]){
       const member=state.staff[w.id],before=member.level;
+      const beforeStats=employeeStats(w);
       if(member.level<10){
         member.xp++;
         if(member.xp>=member.level*2){member.xp=0;member.level++;}
       }
-      xpChanges.push({name:w.name,level:member.level,xp:member.xp,leveled:member.level>before});
+      xpChanges.push({name:w.name,level:member.level,xp:member.xp,leveled:member.level>before,beforeStats,afterStats:employeeStats(w)});
     }
+    const beforeCompanyLevel=state.companyLevel;
     state.releases++;
     state.companyLevel=Math.min(10,1+Math.floor(state.releases/2));
     const discoveries=[];
@@ -538,7 +575,19 @@
     $('scene').classList.remove('season-turn');void $('scene').offsetWidth;$('scene').classList.add('season-turn');
     const xpReport='<div class="experience-report"><strong>참여 직원 경험치</strong>'+xpChanges.map(w=>'<div><span>'+w.name+'</span><span>'+(w.leveled?'+1 XP · LV.'+w.level+' 달성! · 기본값에 비례해 능력 상승':w.level===10?'최대 레벨':'+1 XP · '+w.xp+'/'+(w.level*2))+'</span></div>').join('')+'</div>';
     const loanReport=chargedInterest?'<div class="report-line">이번 시즌 대출 이자 <strong>+₩'+money(chargedInterest)+'M · 총 상환액 ₩'+money(loanBalance())+'M</strong></div>':'';
+    const companyLevelUp=state.companyLevel>beforeCompanyLevel?levelUpPanel('회사 LV.'+state.companyLevel+' 달성!',[
+      levelChange('대출 원금 한도',loanLimit(beforeCompanyLevel),loanLimit(state.companyLevel),'M','M'),
+      levelChange('시즌 이자율',loanRate(beforeCompanyLevel)*100,loanRate(state.companyLevel)*100,'%','%p',1)
+    ],'새로운 금융 혜택이 열렸어요'):'';
+    const leveledStaff=xpChanges.filter(w=>w.leveled);
+    const staffLevelUp=leveledStaff.length?levelUpPanel('직원 '+leveledStaff.length+'명 레벨업!',leveledStaff.flatMap(w=>[
+      '<div class="level-employee-name">'+w.name+' · LV.'+w.level+'</div>',
+      ...statLabels.map(([key,label])=>levelChange(label,w.beforeStats[key],w.afterStats[key]))
+    ]),'제작 경험으로 능력치가 올랐어요'):'';
     showModal('<span class="modal-kicker">COLLECTION RELEASED · '+trend.season+'</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2><div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div><div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 시즌은 '+trends[state.releases%trends.length].season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    if(companyLevelUp)$('modalContent').querySelector('.result-hero').insertAdjacentHTML('afterend',companyLevelUp);
+    if(staffLevelUp)$('modalContent').querySelector(companyLevelUp?'.level-up-panel':'.result-hero').insertAdjacentHTML('afterend',staffLevelUp);
+    if(companyLevelUp||staffLevelUp)animateLevelChanges();
     $('reportDone').onclick=closeModal;
   };
   const showResearch = () => {
@@ -662,6 +711,7 @@
   $('menuHire').onclick=()=>{setMenu(false);showHire(0);};
   $('menuFurniture').onclick=()=>{setMenu(false);showFurniture(0);};
   $('menuLoan').onclick=()=>{setMenu(false);showLoan();};
+  $('officeRepayButton').onclick=()=>showLoan(true);
   $('menuSave').onclick=()=>{setMenu(false);showSaveInfo();};
   $('startForm').addEventListener('submit',event=>{
     event.preventDefault();
@@ -683,7 +733,7 @@
     const next=state.officeLevel+1;
     showModal('<span class="modal-kicker">OFFICE UPGRADE</span><h2 id="modalTitle">'+offices[next-1]+'로 확장</h2><p>비용 ₩'+price+'M을 투자하면 오피스 레벨 '+next+'가 됩니다. 배치 가능한 칸이 늘어나고 새로운 가구가 열릴 수 있어요. 기존 배치는 그대로 유지됩니다.</p><button class="modal-primary" id="confirmUpgrade" type="button">₩'+price+'M 투자하기</button>');
     $('confirmUpgrade').onclick=()=>{
-      const oldN=gridSize();state.assets-=price;state.officeLevel=next;
+      const beforeLevel=state.officeLevel,oldN=gridSize();state.assets-=price;state.officeLevel=next;
       const newN=gridSize(),used=new Set();
       state.placed=state.placed.map(p=>{
         let x=Math.min(newN-1,Math.floor((p.x+.5)*newN/oldN));
@@ -694,7 +744,15 @@
         }
         used.add(x+','+y);return {...p,x,y};
       });
-      save();render();closeModal();toast(offices[next-1]+' 확장 완료!');
+      save();render();
+      const changes=[
+        levelChange('고용 가능 직원',employeeCap[beforeLevel-1],employeeCap[next-1],'명'),
+        levelChange('배치 가능 가구',furnitureCap[beforeLevel-1],furnitureCap[next-1],'개')
+      ];
+      if(newN!==oldN)changes.push(levelChange('사무실 배치 칸',oldN*oldN,newN*newN,'칸'));
+      if(next===4||next===8)changes.push('<div class="level-change level-art-change"><span>사무실 이미지</span><strong>새 사무실 배경 등장 ✨</strong></div>');
+      showModal('<span class="modal-kicker">OFFICE LEVEL UP</span><h2 id="modalTitle">사무실 확장 완료!</h2>'+levelUpPanel('오피스 LV.'+next+' 달성!',changes,offices[next-1])+'<button class="modal-primary" id="levelUpDone" type="button">사무실로 돌아가기</button>');
+      animateLevelChanges();$('levelUpDone').onclick=closeModal;
     };
   };
   const showOfficeInfo = () => {
