@@ -20,6 +20,9 @@ const current=context.api.hydrate({layoutVersion:3,officeLevel:12,companyLevel:1
 assert.equal(current.monthsElapsed,22);
 assert.equal(current.companyLevel,12);
 assert.equal(current.officeLevel,12);
+const researching=context.api.hydrate({layoutVersion:5,officeLevel:1,releases:1,monthsElapsed:1,placed:[],hired:[],researchTasks:[{id:'linen',finishMonth:2}]});
+assert.equal(researching.researchTasks.length,1);
+assert.equal(researching.researchTasks[0].finishMonth,2);
 const widened=context.api.hydrate({layoutVersion:3,officeLevel:2,releases:0,placed:[
   {id:'breakroom-1',x:1,y:1},{id:'fridge-2',x:2,y:1}
 ],ownedFurniture:[{id:'breakroom-1',kind:'breakroom'},{id:'fridge-2',kind:'fridge'}],hired:[]});

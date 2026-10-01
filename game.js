@@ -74,6 +74,7 @@
   const FLOOR_ORIGIN={left:54,top:28};
   const FLOOR_RIGHT={left:38,top:29};
   const FLOOR_LEFT={left:-44,top:29.5};
+  const FLOOR_CONTACT_TOP=2;
   const floorPoint=(u,v)=>({
     left:FLOOR_ORIGIN.left+FLOOR_RIGHT.left*u+FLOOR_LEFT.left*v,
     top:FLOOR_ORIGIN.top+FLOOR_RIGHT.top*u+FLOOR_LEFT.top*v
@@ -98,7 +99,7 @@
   const targets = ['20대 직장인','10대 학생','아웃도어 고객'];
   const initial = () => ({
     layoutVersion:5,companyName:'',officeLevel:1,companyLevel:1,assets:180,customers:0,releases:0,monthsElapsed:0,localSave:false,
-    research:0,unlocks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
+    research:0,unlocks:[],researchTasks:[],staff:{},hired:[],ownedFurniture:[],history:[],placed:[],loan:{principal:0,interestDue:0}
   });
   let state = initial();
   const hydrate = saved => {
@@ -109,6 +110,9 @@
       loaded.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(loaded.releases/2));
       loaded.staff = saved.staff || {};
       loaded.unlocks = Array.isArray(saved.unlocks) ? saved.unlocks : [];
+      loaded.researchTasks = Array.isArray(saved.researchTasks) ? saved.researchTasks.filter(task=>
+        task&&typeof task.id==='string'&&Number.isInteger(task.finishMonth)&&task.finishMonth>loaded.monthsElapsed&&!loaded.unlocks.includes(task.id)
+      ) : [];
       loaded.history = Array.isArray(saved.history) ? saved.history : [];
       loaded.hired = Array.isArray(saved.hired) ? saved.hired : workers.filter(w => saved.placed.some(p => p.id===w.id)).map(w => w.id);
       loaded.ownedFurniture = Array.isArray(saved.ownedFurniture) ? saved.ownedFurniture : saved.placed.filter(p => furniture.some(f => f.id===p.id)).map(p => ({id:p.id,kind:p.id}));
@@ -274,7 +278,8 @@
       }
       const center=footprintCenter(p.x,p.y,d.spanX||1);
       button.style.left=center.left+'%';
-      button.style.top=center.top+'%';
+      // Artwork contact points read a little high against the painted diamonds.
+      button.style.top=(center.top+FLOOR_CONTACT_TOP)+'%';
       button.style.zIndex=5+p.x+p.y;
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+d.sprite+'.webp';img.alt='';img.draggable=false;
       const label=document.createElement('span');label.className='piece-label';label.textContent=d.name;
@@ -803,6 +808,7 @@
     const beforeCompanyLevel=state.companyLevel;
     state.releases++;
     state.monthsElapsed++;
+    const completedResearch=finishResearch();
     state.companyLevel=Math.min(COMPANY_MAX,1+Math.floor(state.releases/2));
     const discoveries=[];
     if(state.releases===2&&!has('hoodie')){state.unlocks.push('hoodie');discoveries.push('후드티');}
@@ -827,7 +833,7 @@
     pendingLevelUp=companyLevelUp+staffLevelUp||null;
     const runwayReport=runway?'<section class="runway-report"><div class="fashion-week-preview compact"><img data-skeleton src="./assets/'+fashionWeekArtwork(trend.season)+'" alt="패션위크 런웨이"></div><h3>'+(runway.rank?runway.rank+'위 입상!':'이번 패션위크는 입상하지 못했어요')+'</h3><p>네 능력 가중 합계 '+runway.score.toFixed(1)+'점 · 최소 입상 기준 14점</p><div class="runway-stat-grid">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><ol class="runway-podium">'+runway.podium.map((entry,index)=>'<li class="'+(entry.player?'our-brand':'')+'"><span>'+ (index+1)+'위 · '+entry.name+'</span><strong>'+entry.score.toFixed(1)+'점</strong></li>').join('')+'</ol><p class="runway-prize">'+(runway.prize?'패션위크 상금 +₩'+money(runway.prize)+'M':'상금 없음 · 다음 패션위크에 다시 도전해 보세요')+'</p></section>':'';
     const resultHero='<div class="result-hero '+(success?'result-success':'result-failure')+'">'+(success?celebration()+'<div class="result-mark" aria-hidden="true">✦</div><strong>컬렉션 성공!</strong>':'<img data-skeleton class="sad-team" src="./assets/cats-disappointed.webp" alt="디자인·재봉·촬영을 맡은 고양이 직원들이 실망한 표정으로 앉아 있는 모습"><strong>이번 결과는 아쉬워요</strong>')+'</div>';
-    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+salaryReport+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
+    showModal('<span class="modal-kicker">'+(fashionWeek?'FASHION WEEK RESULT':'COLLECTION RELEASED')+' · '+trend.season+' '+releaseMonth+'월</span><h2 id="modalTitle">'+choices.style+' '+choices.item+' 출시</h2>'+resultHero+runwayReport+'<div class="report-score">'+score+'</div><p>'+reason+' '+(success?'제작과 판매가 순조로웠습니다.':'제작 결과가 기대치에 미치지 못했습니다.')+'</p><blockquote class="customer-review">'+review+'</blockquote><div class="report-line">예상 성공률 / 결과 <strong>'+chance+'% / '+(success?'성공':'아쉬움')+'</strong></div><div class="report-line">능력 합산 / 성공 목표 <strong>'+outcome.score.toFixed(1)+' / '+outcome.goal+'</strong></div><div class="result-stat-summary">'+statLabels.map(([key,label])=>'<span>'+label+' <strong>'+outcome.rolls[key]+'</strong></span>').join('')+'</div><div class="report-line">매출 / 제작비 <strong>₩'+revenue+'M / ₩38M</strong></div>'+salaryReport+loanReport+'<div class="change-grid">'+changeCard('자산',state.assets-previous.assets,previous.assets,'M')+changeCard('고객',state.customers-previous.customers,previous.customers,'명')+changeCard('연구 포인트',state.research-previous.research,previous.research,'P')+'</div>'+xpReport+(discoveries.length?'<p class="discovery">새 의류 발견: '+discoveries.join(', ')+'</p>':'')+(completedResearch.length?'<p class="discovery">연구 완료: '+completedResearch.join(', ')+'</p>':'')+'<p>다음 달은 '+calendarYear()+'년 '+currentMonth()+'월 · '+currentTrend().season+'입니다.</p><button class="modal-primary" id="reportDone" type="button">사무실로 돌아가기</button>');
     $('reportDone').onclick=closeModal;
   };
   const showStaff = (role='디자인') => {
@@ -867,9 +873,28 @@
       {id:'audienceResearch',name:'신규 고객 탐색',cost:7,detail:'주요 고객층 이외 대상 제작 목표 −1'}
     ]
   };
+  const researchDuration=project=>project.cost-2;
+  const startResearch=project=>{
+    if(has(project.id)||state.researchTasks.some(task=>task.id===project.id)||state.research<project.cost)return false;
+    state.research-=project.cost;
+    state.researchTasks.push({id:project.id,finishMonth:state.monthsElapsed+researchDuration(project)});
+    return true;
+  };
+  const finishResearch=()=>{
+    const done=state.researchTasks.filter(task=>task.finishMonth<=state.monthsElapsed);
+    state.researchTasks=state.researchTasks.filter(task=>task.finishMonth>state.monthsElapsed);
+    const names=[];
+    for(const task of done){
+      if(has(task.id))continue;
+      const project=Object.values(researchProjects).flat().find(item=>item.id===task.id);
+      if(!project)continue;
+      state.unlocks.push(task.id);names.push(project.name);
+    }
+    return names;
+  };
   const showResearch = (category='소재') => {
     if(!researchProjects[category])category='소재';
-    showModal('<span class="modal-kicker">DISCOVERY</span><h2 id="modalTitle">연구</h2><p>연구 포인트 '+state.research+'P · 연구한 항목은 컬렉션 제작에 적용됩니다.</p><div class="section-tabs" id="researchTabs" role="tablist" aria-label="연구 분야"></div><div id="researchRows" role="tabpanel"></div>');
+    showModal('<span class="modal-kicker">DISCOVERY</span><h2 id="modalTitle">연구</h2><p>연구 포인트 '+state.research+'P · 연구는 컬렉션을 출시할 때마다 한 달씩 진행됩니다. 완료한 연구부터 제작에 적용돼요.</p><div class="section-tabs" id="researchTabs" role="tablist" aria-label="연구 분야"></div><div id="researchRows" role="tabpanel"></div>');
     Object.keys(researchProjects).forEach(name=>{
       const button=document.createElement('button');button.type='button';button.textContent=name;button.setAttribute('role','tab');
       button.setAttribute('aria-selected',String(name===category));button.className=name===category?'active':'';
@@ -877,11 +902,12 @@
     });
     researchProjects[category].forEach(project=>{
       const row=document.createElement('div');row.className='research-row';
-      const body=document.createElement('div');body.innerHTML='<strong>'+project.name+'</strong><small>'+project.detail+'</small>';
+      const body=document.createElement('div');body.innerHTML='<strong>'+project.name+'</strong><small>'+project.detail+' · '+researchDuration(project)+'개월 소요</small>';
       const button=document.createElement('button');button.type='button';
-      button.textContent=has(project.id)?'연구 완료':project.cost+'P 연구';
-      button.disabled=has(project.id)||state.research<project.cost;
-      button.onclick=()=>{if(has(project.id)||state.research<project.cost)return;state.research-=project.cost;state.unlocks.push(project.id);save();showResearch(category);toast(project.name+' 연구 완료!');};
+      const task=state.researchTasks.find(entry=>entry.id===project.id);
+      button.textContent=has(project.id)?'연구 완료':task?'남은 '+(task.finishMonth-state.monthsElapsed)+'개월':project.cost+'P 연구 시작';
+      button.disabled=has(project.id)||Boolean(task)||state.research<project.cost;
+      button.onclick=()=>{if(!startResearch(project))return;save();showResearch(category);toast(project.name+' 연구를 시작했어요.');};
       row.append(body,button);$('researchRows').append(row);
     });
   };
