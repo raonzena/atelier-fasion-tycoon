@@ -1,0 +1,42 @@
+name: Unity port reference assets
+on:
+  push:
+    branches: ["unity/standalone-port"]
+    paths: [".github/workflows/unity-port-reference.yml"]
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Convert original artwork and collect reference
+        run: |
+          python -m pip install Pillow cairosvg
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import shutil, cairosvg, json, subprocess
+          dst = Path('/tmp/atelier-web-reference'); dst.mkdir()
+          for name in ['game.js', 'index.html', 'style.css', 'cloud-save.js', 'README.md', 'firestore.rules', 'sw.js', 'tests', 'api']:
+              src = Path(name)
+              if src.is_dir(): shutil.copytree(src, dst / name)
+              elif src.exists(): shutil.copy2(src, dst / name)
+          art = dst / 'assets'; art.mkdir()
+          manifest=[]
+          for src in sorted(Path('assets').iterdir()):
+              if src.suffix.lower() == '.webp':
+                  Image.open(src).save(art / (src.stem + '.png'))
+              elif src.suffix.lower() == '.svg':
+                  cairosvg.svg2png(url=str(src), write_to=str(art / (src.stem + '.png')), output_width=192, output_height=192)
+              else: shutil.copy2(src, art / src.name)
+              manifest.append({'source':str(src), 'unity': src.stem + '.png'})
+          (dst / 'asset-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
+          (dst / 'SOURCE_COMMIT.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD']).decode())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atelier-web-reference
+          path: /tmp/atelier-web-reference
+          retention-days: 7
+          compression-level: 9
