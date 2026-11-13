@@ -3,9 +3,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
-const game=fs.readFileSync(path.join(__dirname,'../game.js'),'utf8');
-const cloud=fs.readFileSync(path.join(__dirname,'../cloud-save.js'),'utf8');
+const html=fs.readFileSync(path.join(__dirname,'../dist/client/index.html'),'utf8');
+const game=fs.readFileSync(path.join(__dirname,'../dist/client/game.js'),'utf8');
+const cloud=fs.readFileSync(path.join(__dirname,'../dist/client/cloud-save.js'),'utf8');
 assert.match(html, /id="startLayer" hidden/);
 assert.match(html, /id="initialLoading"[^>]*aria-busy="true"/);
 assert.match(cloud, /onAuthStateChanged\(auth,async user=>/);

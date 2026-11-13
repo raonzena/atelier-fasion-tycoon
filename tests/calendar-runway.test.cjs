@@ -18,8 +18,9 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.slice(trendStart,trendEnd)+source.slice(calendarStart,calendarEnd)+source.slice(judgeStart,judgeEnd)+
-  '\nthis.api={currentMonth,calendarYear,currentTrend,isFashionWeekMonth,officeRequiredReleases,judgeFashionWeek};',context);
+  '\nthis.api={currentMonth,calendarYear,currentTrend,nextSeasonTrend,isFashionWeekMonth,officeRequiredReleases,judgeFashionWeek};',context);
 const api=context.api;
+assert.equal(api.nextSeasonTrend().season,'봄');
 for(const [elapsed,month,year,season,event] of [
   [0,1,1,'겨울',false],[1,2,1,'겨울',false],
   [2,3,1,'봄',true],[3,4,1,'봄',false],[4,5,1,'봄',false],

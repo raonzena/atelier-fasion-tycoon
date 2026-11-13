@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '../game.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '../dist/client/game.js'), 'utf8');
 const start = source.indexOf('  let accountChoiceResolve=null;');
 const end = source.indexOf('  const showSaveInfo =', start);
 assert(start > 0 && end > start);
@@ -25,6 +25,7 @@ const context = {
   isProducing: false,
   eventVenueActive: false,
   state: {officeLevel: 4},
+  selectedOfficeArtwork: () => context.state.activeSkin ? 'skin-plant.webp' : 'office-mid.webp',
   Image: class {set src(value) {loadedArtwork=value;} decode() {return Promise.resolve();}},
   setTimeout: callback => {callback();},
   requestAnimationFrame: callback => callback(),
@@ -60,5 +61,12 @@ setImmediate(() => {
   assert.equal(context.eventVenueActive, false);
   assert.equal(loadedArtwork, './assets/office-mid.webp');
   assert.equal(renders, 1);
+  context.state.activeSkin = 'plant';
+  context.eventVenueActive = true;
+  context.api.closeModal();
+  setImmediate(() => {
+    assert.equal(loadedArtwork, './assets/skin-plant.webp');
+    assert.equal(renders, 2);
+  });
   console.log('Collection result, level-up modal, and Fashion Week office return passed.');
 });

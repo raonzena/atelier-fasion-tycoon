@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-const source = fs.readFileSync(path.join(__dirname, '../game.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '../dist/client/game.js'), 'utf8');
 const start = source.indexOf('  const levelChange =');
 const end = source.indexOf('  const animateLevelChanges =', start);
 assert(start > 0 && end > start);
