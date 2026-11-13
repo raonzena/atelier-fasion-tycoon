@@ -34,7 +34,12 @@
     {id:'coco',name:'코코',sprite:'cat-production-calico',level:10,type:'worker',role:'생산',cost:64},
     {id:'bambi',name:'밤비',sprite:'cat-marketing-black',level:2,type:'worker',role:'마케팅',cost:30},
     {id:'euni',name:'은이',sprite:'cat-marketing-tabby',level:4,type:'worker',role:'마케팅',cost:36},
-    {id:'gureum',name:'구름',sprite:'cat-marketing-ginger',level:6,type:'worker',role:'마케팅',cost:42}
+    {id:'gureum',name:'구름',sprite:'cat-marketing-ginger',level:6,type:'worker',role:'마케팅',cost:42},
+    {id:'specialRuby',name:'루비',sprite:'cat-special-ruby',level:1,type:'worker',role:'디자인',cost:96,special:true,inspiration:'오드리 헵번의 블랙 드레스',talent:6},
+    {id:'specialFlora',name:'플로라',sprite:'cat-special-flora',level:1,type:'worker',role:'디자인',cost:100,special:true,inspiration:'프리다 칼로의 꽃 장식과 자수',talent:6},
+    {id:'specialStar',name:'스타',sprite:'cat-special-star',level:1,type:'worker',role:'마케팅',cost:104,special:true,inspiration:'데이비드 보위의 글램 록 의상',talent:6},
+    {id:'specialElli',name:'엘리',sprite:'cat-special-elli',level:1,type:'worker',role:'생산',cost:100,special:true,inspiration:'엘비스 프레슬리의 무대 의상',talent:6},
+    {id:'specialTheo',name:'테오',sprite:'cat-special-theo',level:1,type:'worker',role:'마케팅',cost:102,special:true,inspiration:'프레드 아스테어의 클래식 턱시도',talent:6}
   ];
   const workers = items.filter(i => i.type === 'worker');
   const furniture = items.filter(i => i.type === 'furniture');
@@ -699,7 +704,7 @@
     '마케팅':{design:0,sewing:-3,trend:2,efficiency:-1}
   };
   // Recruitment tiers rise at every office level; role offsets keep each specialty distinct.
-  const baseStats = w => Object.fromEntries(statLabels.map(([key])=>[key,Math.max(1,5+w.level+roleStats[w.role][key])]));
+  const baseStats = w => Object.fromEntries(statLabels.map(([key])=>[key,Math.max(1,5+w.level+(w.talent||0)+roleStats[w.role][key])]));
   const statGrowth = base => Math.max(1,Math.round(base/8));
   const employeeStats = w => {
     const base=baseStats(w),bonus=levelBonus(w);
@@ -1171,6 +1176,12 @@
     };
   };
   const pageSize=5;
+  const SPECIAL_APPEAR_CHANCE=.03;
+  const drawSpecialCandidate = (random=Math.random) => {
+    const available=workers.filter(w=>w.special&&!state.hired.includes(w.id));
+    return available.length&&random()<SPECIAL_APPEAR_CHANCE?available[Math.floor(random()*available.length)]:null;
+  };
+  let featuredSpecial=null;
   const showPager = (page,count,onPage) => {
     const total=Math.ceil(count/pageSize),nav=$('shopPagination');
     nav.replaceChildren();
@@ -1189,19 +1200,25 @@
     const icon=document.createElement('img');icon.src='./assets/lock.svg';icon.alt='';icon.setAttribute('aria-hidden','true');
     button.classList.add('is-locked');button.setAttribute('aria-label','오피스 LV.'+level+'부터 해금');button.append(icon);
   };
-  const showHire = (page=0) => {
-    const roster=workers.slice().sort((a,b)=>a.level-b.level);
+  const showHire = (page=0,newVisit=false) => {
+    if(newVisit)featuredSpecial=drawSpecialCandidate();
+    const roster=workers.filter(w=>!w.special).sort((a,b)=>a.level-b.level);
+    if(featuredSpecial)roster.unshift(featuredSpecial);
     page=Math.max(0,Math.min(page,Math.ceil(roster.length/pageSize)-1));
     showModal('<span class="modal-kicker">STAFF RECRUITMENT</span><h2 id="modalTitle">직원 고용</h2><p>오피스 LV.'+state.officeLevel+' · 고용 '+state.hired.length+'/'+employeeCap[state.officeLevel-1]+'명. 고용비를 내고 채용하면 매달 같은 금액의 월급이 지급됩니다. 컬렉션 제작비는 참여 직원 수·능력치·회사 레벨에 따라 달라져요.</p><div id="shopRows"></div><nav class="shop-pagination" id="shopPagination" aria-label="직원 목록 페이지"></nav>');
     roster.slice(page*pageSize,(page+1)*pageSize).forEach(w=>{
       const row=document.createElement('div');row.className='shop-row';
+      if(w.special)row.classList.add('special-recruit');
       const img=skeletonImage(document.createElement('img'));img.src='./assets/'+w.sprite+'.webp';img.alt='';img.loading='eager';img.decoding='async';img.width=72;img.height=72;
       const body=document.createElement('div');body.className='shop-description';
-      const heading=document.createElement('strong');heading.textContent=workerName(w)+' · '+w.role;
+      const heading=document.createElement('strong');
+      if(w.special){const badge=document.createElement('span');badge.className='special-badge';badge.textContent='SPECIAL';heading.append(badge,' ');}
+      heading.append(workerName(w)+' · '+w.role);
       const detail=document.createElement('small');detail.textContent=statSummary(w);
+      const inspiration=document.createElement('small');if(w.special)inspiration.textContent='의상 모티브 · '+w.inspiration;
       const unlock=document.createElement('small');unlock.textContent='오피스 LV.'+w.level+'부터';
       const salary=document.createElement('small');salary.textContent='고용비 ₩'+money(hiringCost(w))+'M · 월급 ₩'+money(hiringCost(w))+'M';
-      body.append(heading,detail,unlock,salary);
+      body.append(heading,detail,...(w.special?[inspiration]:[]),unlock,salary);
       const button=document.createElement('button');button.type='button';
       const price=hiringCost(w);
       const owned=state.hired.includes(w.id),locked=state.officeLevel<w.level,full=state.hired.length>=employeeCap[state.officeLevel-1],affordable=state.assets>=price;
@@ -1296,7 +1313,7 @@
   $('onboardingLayer').addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();finishOnboarding();}});
   toggle.onclick=()=>setMenu(menu.hidden);
   document.addEventListener('click',event=>{if(!menu.contains(event.target)&&event.target!==toggle)setMenu(false);});
-  $('menuHire').onclick=()=>{setMenu(false);showHire(0);};
+  $('menuHire').onclick=()=>{setMenu(false);showHire(0,true);};
   $('menuFurniture').onclick=()=>{setMenu(false);showFurniture(0);};
   $('menuLoan').onclick=()=>{setMenu(false);showLoan();};
   $('officeRepayButton').onclick=()=>showLoan(true);

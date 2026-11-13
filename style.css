@@ -119,6 +119,8 @@ html,body{background:#493044}
 .start-card input{width:100%;padding:13px;border:2px solid #c8aab3;border-radius:10px;background:#fff;color:#492d40;font:inherit;font-size:17px}
 .start-card p{font-size:14px;line-height:1.5;color:#745d68}
 .shop-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #ead8d0}
+.shop-row.special-recruit{margin:0 -8px 4px;padding:9px 8px;border:2px solid #e6a656;border-radius:12px;background:#fff1d8}
+.special-badge{display:inline-block;padding:3px 6px;border-radius:6px;background:#b05672;color:#fff7df;font-size:10px;font-weight:900;letter-spacing:.05em;vertical-align:middle}
 .shop-row img{width:57px;height:57px;object-fit:contain}
 .shop-description{display:flex;flex-direction:column;gap:3px;flex:1}
 .shop-description small{color:#826d76}
