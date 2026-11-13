@@ -15,6 +15,7 @@ const old=context.api.hydrate({layoutVersion:3,officeLevel:10,companyLevel:10,re
 assert.equal(old.monthsElapsed,14); // Old March-start date remains March in Year 2.
 assert.equal(old.companyLevel,3);
 assert.equal(old.officeLevel,10);
+assert.equal(old.onboardingSeen,true); // Existing companies are not shown the first-play guide.
 
 const current=context.api.hydrate({layoutVersion:3,officeLevel:12,companyLevel:12,releases:22,monthsElapsed:22,placed:[],hired:[]});
 assert.equal(current.monthsElapsed,24);
@@ -34,6 +35,10 @@ assert.equal(researching.researchTasks[0].finishMonth,4);
 const january=context.api.hydrate({calendarStartMonth:1,layoutVersion:5,officeLevel:1,releases:1,monthsElapsed:1,placed:[],hired:[],researchTasks:[{id:'linen',finishMonth:2}]});
 assert.equal(january.monthsElapsed,1);
 assert.equal(january.researchTasks[0].finishMonth,2);
+const newlyStarted=context.api.hydrate(null);
+assert.equal(newlyStarted.onboardingSeen,false);
+const guidePending=context.api.hydrate({calendarStartMonth:1,layoutVersion:5,officeLevel:1,releases:0,placed:[],onboardingSeen:false});
+assert.equal(guidePending.onboardingSeen,false);
 const widened=context.api.hydrate({layoutVersion:3,officeLevel:2,releases:0,placed:[
   {id:'breakroom-1',x:1,y:1},{id:'fridge-2',x:2,y:1}
 ],ownedFurniture:[{id:'breakroom-1',kind:'breakroom'},{id:'fridge-2',kind:'fridge'}],hired:[]});

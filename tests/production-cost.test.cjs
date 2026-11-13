@@ -1,0 +1,26 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+
+const source=fs.readFileSync(path.join(__dirname,'../dist/client/game.js'),'utf8');
+const start=source.indexOf('  const productionCost =');
+const end=source.indexOf('  const rollStats =',start);
+assert(start>0&&end>start);
+const state={companyLevel:1};
+const staff=[{id:'a',stats:{design:5,sewing:6,trend:7,efficiency:8}},{id:'b',stats:{design:9,sewing:10,trend:11,efficiency:12}}];
+const context={state,hiredWorkers:()=>staff,employeeStats:worker=>worker.stats,participationCount:()=>0,MAX_YEARLY_PRODUCTIONS:5};
+vm.createContext(context);
+vm.runInContext(source.slice(start,end)+'\nthis.productionCost=productionCost;this.minimumProductionCost=minimumProductionCost;',context);
+const one=context.productionCost({a:true});
+assert.equal(one,35);
+assert.equal(context.productionCost({a:true,b:true}),55);
+assert.equal(context.minimumProductionCost(),one);
+staff[0].stats.design+=8;
+assert.equal(context.productionCost({a:true}),37);
+state.companyLevel=3;
+assert.equal(context.productionCost({a:true}),45);
+assert.match(source,/state\.assets=roundMoney\(state\.assets\+revenue-cost-salaryPaid/);
+assert.match(source,/state\.assets<cost/);
+assert.match(source,/productionCost'\)\.textContent/);
+console.log('Production cost grows with selected staff, ability and company level; displayed cost is charged.');

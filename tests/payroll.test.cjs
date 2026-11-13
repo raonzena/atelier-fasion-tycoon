@@ -18,6 +18,6 @@ state.hired=['tani'];
 assert.equal(context.payroll.monthlyPayroll(),15.5);
 state.hired=[];
 assert.equal(context.payroll.monthlyPayroll(),0);
-assert.match(source,/state\.assets=roundMoney\(state\.assets\+revenue-38-salaryPaid/);
+assert.match(source,/state\.assets=roundMoney\(state\.assets\+revenue-cost-salaryPaid/);
 assert.match(source,/state\.staff\[w\.id\]=state\.staff\[w\.id\]\|\|\{level:1,xp:0\}/);
 console.log('Hiring and monthly payroll use half-cost, and firing removes future salary without resetting staff progress.');
