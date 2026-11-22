@@ -72,11 +72,11 @@
   const furnitureCap = [2,3,4,5,6,7,8,9,10,11,12,13];
   const furniturePrice = {designDesk:18,sewingDesk:22,sewingMachine:34,rack:16,photo:30,moodboard:26,lounge:36,longRack:28,computerDesk:42,mannequin:24,breakroom:32,fridge:20,largePhoto:62,fabricSamples:38};
   const mapSkins = [
-    {id:'vintage',name:'빈티지 봉제 공방',price:80,description:'금빛 장식과 반짝이는 원목 마루',artwork:'skin-vintage.webp'},
-    {id:'plant',name:'햇살 드는 식물 아틀리에',price:70,description:'햇살과 꽃이 가득한 초록 아틀리에',artwork:'skin-plant.webp'},
-    {id:'loft',name:'도심 로프트 스튜디오',price:100,description:'도시 전망과 윤기 있는 스튜디오 바닥',artwork:'skin-loft.webp'},
-    {id:'backstage',name:'패션위크 백스테이지',price:120,description:'쇼 조명과 화려한 핑크빛 무대',artwork:'skin-backstage.webp'},
-    {id:'christmas',name:'크리스마스 아틀리에',price:110,description:'눈 내리는 창밖과 반짝이는 장식',artwork:'skin-christmas.webp'}
+    {id:'vintage',name:'빈티지 봉제 공방',price:500,description:'금빛 장식과 반짝이는 원목 마루',artwork:'skin-vintage.webp'},
+    {id:'plant',name:'햇살 드는 식물 아틀리에',price:800,description:'햇살과 꽃이 가득한 초록 아틀리에',artwork:'skin-plant.webp'},
+    {id:'loft',name:'도심 로프트 스튜디오',price:800,description:'도시 전망과 윤기 있는 스튜디오 바닥',artwork:'skin-loft.webp'},
+    {id:'backstage',name:'패션위크 백스테이지',price:800,description:'쇼 조명과 화려한 핑크빛 무대',artwork:'skin-backstage.webp'},
+    {id:'christmas',name:'크리스마스 아틀리에',price:1000,description:'눈 내리는 창밖과 반짝이는 장식',artwork:'skin-christmas.webp'}
   ];
   const defaultOfficeArtwork = level => (level<4?'office-pastel':level<8?'office-mid':'office-high')+'.webp';
   const selectedOfficeArtwork = () => mapSkins.find(skin=>skin.id===state.activeSkin)?.artwork || defaultOfficeArtwork(state.officeLevel);
